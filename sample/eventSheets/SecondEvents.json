@@ -2,10 +2,6 @@
 	"name": "SecondEvents",
 	"events": [
 		{
-			"eventType": "include",
-			"includeSheet": "VideoPlayerEvents"
-		},
-		{
 			"eventType": "block",
 			"conditions": [
 				{
