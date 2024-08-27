@@ -77,6 +77,10 @@
 						  });
 					})
 
+					this.gplayerAPI.on('timeupdate', (e) => {
+						console.log('[video player] timeupdate', e)
+					})
+
 					this.gplayerAPI.on('pause', () => {
 						console.log('[video player]', 'Paused')
 
