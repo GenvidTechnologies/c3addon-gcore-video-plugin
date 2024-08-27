@@ -28,7 +28,6 @@ const PLUGIN_CLASS = SDK.Plugins.Genvidtech_VideoPlayerPlugin2 = class MyDrawing
 		this._info.SetCategory(PLUGIN_CATEGORY);
 		this._info.SetAuthor("Genvid Technologies LLC");
 		this._info.SetHelpUrl(self.lang(".help-url"));
-		this._info.SetIsSingleGlobal(true);
 		
 		// Load domSide.js in the document context (main thread).
 		// This is important for supporting the runtime's web worker mode.
