@@ -13,7 +13,7 @@
 	// the runtime and the DOM side in the main thread. This allows non-worker mode to work the same with
 	// no additional code changes necessary. However it's best to imagine that the runtime side is in a
 	// Web Worker, since that is when it is necessary to separate DOM calls from the runtime.
-	
+
 	// NOTE: use a unique DOM component ID to ensure it doesn't clash with anything else
 	// This must also match the ID in instance.js and plugin.js.
 	const DOM_COMPONENT_ID = "genvidtech-gcorevideoplugin";
@@ -21,6 +21,8 @@
 	const HANDLER_CLASS = class GCoreVideoDOMHandler extends self.DOMHandler {
 		constructor(iRuntime) {
 			super(iRuntime, DOM_COMPONENT_ID);
+
+			this._initialized = false;
 
 			this.AddRuntimeMessageHandlers([
 				["load", e => this._OnLoad(e)],
@@ -46,40 +48,40 @@
 					console.error("[video player] GcorePlayer or gplayerAPI not found");
 				}
 
-				this.gplayerAPI.on("ready", () => {
-					console.log("[video player]", "Ready");
-
-					this.PostToRuntime("state-changed", {
-						state: {
-							playerState: "ready",
-						}
-					});
-				})
 				this.gplayerAPI.on("play", () => {
 					console.log("[video player]", "Playing");
 
-					this.PostToRuntime("state-changed", {
-						state: {
-							playerState: "playing",
-						}
-					});
-				})
-				this.gplayerAPI.on("pause", () => {;
-					console.log("[video player]", "Paused")
+					if (this._initialized) {
+						this.PostToRuntime("state-changed", {
+							state: {
+								playerState: "playing",
+							}
+						});
+					} else {
+						this._OnPause();
+						this._OnGetDuration();
+						this._OnGetVolume();
+					}
+				});
 
+				this.gplayerAPI.on("pause", () => {
+					console.log("[video player]", "Paused");
+					this._initialized = true;
 					this.PostToRuntime("state-changed", {
 						state: {
 							playerState: "paused",
 						}
 					});
 				});
+
 				this.gplayerAPI.on("timeupdate", (e) => {
 					this.PostToRuntime("state-changed", {
 						state: {
 							currentPlaybackTime: e.current,
 						}
 					});
-				})
+				});
+
 				this.gplayerAPI.on("volumeupdate", (e) => {
 					console.log("[video player] Volume updated", e);
 
@@ -88,7 +90,8 @@
 							currentVolume: e,
 						}
 					});
-				})
+				});
+
 				this.gplayerAPI.on("ended", () => {
 					console.log("[video player]", "Ended");
 
@@ -97,7 +100,24 @@
 							playerState: "ended",
 						}
 					});
-				})
+				});
+
+				this.gplayerAPI.on("ready", () => {
+					console.log("[video player]", "Ready");
+
+					this._initialized = false;
+					this.PostToRuntime("state-changed", {
+						state: {
+							playerState: "ready",
+						}
+					});
+
+					// Actually load the video for the first time.
+					this._OnPlay();
+
+				});
+
+
 
 			} else {
 				console.error("[video player] Iframe element not found");
@@ -137,55 +157,63 @@
 
 		_OnMute() {
 			console.log("[video player]", "Mute requested");
-			this.gplayerAPI.method({ name: "mute", callback: () => {
-				console.log("[video player]", "Muted");
+			this.gplayerAPI.method({
+				name: "mute", callback: () => {
+					console.log("[video player]", "Muted");
 
-				this.PostToRuntime("state-changed", {
-					state: {
-						audioState: "muted",
-					}
-				});
-			} });
+					this.PostToRuntime("state-changed", {
+						state: {
+							audioState: "muted",
+						}
+					});
+				}
+			});
 		}
-		
+
 		_OnUnmute() {
 			console.log("[video player]", "Unmute requested");
-			this.gplayerAPI.method({ name: "unmute", callback: () => {
-				console.log("[video player]", "Unmuted");
+			this.gplayerAPI.method({
+				name: "unmute", callback: () => {
+					console.log("[video player]", "Unmuted");
 
-				this.PostToRuntime("state-changed", {
-					state: {
-						audioState: "unmuted",
-					}
-				});
-			}});
+					this.PostToRuntime("state-changed", {
+						state: {
+							audioState: "unmuted",
+						}
+					});
+				}
+			});
 		}
 
 		_OnGetDuration() {
 			console.log("[video player]", "Current duration requested");
-			this.gplayerAPI.method({ name: "getDuration", callback: (res) => {
-				console.log("[video player] Duration", res);
+			this.gplayerAPI.method({
+				name: "getDuration", callback: (res) => {
+					console.log("[video player] Duration", res);
 
-				this.PostToRuntime("state-changed", {
-					state: {
-						duration: res,
-					}
-				});
-			} });
+					this.PostToRuntime("state-changed", {
+						state: {
+							duration: res,
+						}
+					});
+				}
+			});
 		}
-		
+
 		_OnGetVolume() {
 			console.log("[video player]", "Current volume requested");
-			this.gplayerAPI.method({ name: "getVolume", callback: (res) => {
-				console.log("[video player] Current volume", res);
+			this.gplayerAPI.method({
+				name: "getVolume", callback: (res) => {
+					console.log("[video player] Current volume", res);
 
-				this.PostToRuntime("state-changed", {
-					state: {
-						currentVolume: res,
-					}
-				});
+					this.PostToRuntime("state-changed", {
+						state: {
+							currentVolume: res,
+						}
+					});
 
-			}});
+				}
+			});
 		}
 
 		_OnDispose() {
@@ -193,6 +221,6 @@
 			this.gplayerAPI = null;
 		}
 	};
-	
+
 	self.RuntimeInterface.AddDOMHandlerClass(HANDLER_CLASS);
 }

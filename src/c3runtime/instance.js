@@ -46,10 +46,6 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 					// Assuming that we are loading a new video
 					this._InitializeState();
 
-					// Check volume and duration when the player is ready
-					if (!this._isInitialized) {
-						this.startCheckingCurrentVolumeDuration();
-					}
 					this._isInitialized = true;
 
 					break;
@@ -124,32 +120,6 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		this.Trigger(C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds.OnStateChanged);
 	}
 
-	// Duration and volume info may not be immediately available. Retry checking if it's not available
-	// TODO: Limit retry count
-	startCheckingCurrentVolumeDuration() {
-		if (!this._isReady) {
-			this.PostToDOM("getVolume");
-			this.PostToDOM("getDuration");
-			
-			this.intervalId = setInterval(() => {
-				if (this._isReady) {
-					this.stopCheckingCurrentVolumeDuration();
-				} else {
-					console.log("[video player] Checking volume and duration info again ...");
-
-					this.PostToDOM("getVolume");
-					this.PostToDOM("getDuration");
-				}
-			}, 1000);
-		}
-	}
-
-    stopCheckingCurrentVolumeDuration() {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
-        }
-    }
 
 	_Load(iframeId) {
 		this.PostToDOM("load", iframeId);
