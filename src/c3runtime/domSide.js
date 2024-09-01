@@ -45,6 +45,7 @@
 			const elem = document.createElement("iframe");
 			elem.style.position = "absolute";
 			elem.style.border = "none";
+			elem.style.pointerEvents = "none";
 			elem.allow = "autoplay; encrypted-media"
 
 			// Prevent touches reaching the canvas
@@ -72,7 +73,7 @@
 
 			// The create message includes the state retrieved by GetElementState() in instance.js,
 			// so also update the element state based on those details.
-			this.UpdateState(elem, e);
+			this.UpdateState(elem, e, true);
 
 
 			console.log("IFrame created:", elem);
@@ -80,14 +81,25 @@
 			return elem;
 		}
 
-		UpdateState(elem, e) {
+		UpdateState(elem, e, isNew = false) {
 			// Update the state of the DOM element 'elem' with the state 'e'. The state has been
 			// retrieved by calling GetElementState() in instance.js, which includes all necessary
 			// details to set the correct state of the DOM element.
 			// NOTE: the runtime automatically manages the position, size and visibility of the DOM
 			// element, so this only needs to handle state unique to the element, such as the button
 			// text in this case.
-			elem.src = e["url"];
+			let url = e["url"];
+			const language = e["subtitles"] || "off";
+			if (language !== "off") {
+				url += "?sub_lang=" + language;
+			}
+			if (elem.src != url) {
+				console.debug("Loading", url);
+				elem.src = url;
+				if (!isNew) {
+					this._PostStateToRuntime({playerState: "loading"});
+				}
+			}
 		}
 
 		_PostStateToRuntime(state) {

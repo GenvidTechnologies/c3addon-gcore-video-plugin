@@ -19,5 +19,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 	},
 	URL() {
 		return this._GetURL();
+	},
+	Subtitles() {
+		return this._GetSubtitles();
 	}
 };

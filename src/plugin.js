@@ -47,7 +47,8 @@ const PLUGIN_CLASS = SDK.Plugins.Genvidtech_GCoreVideoPlugin = class GCoreVideoP
 		SDK.Lang.PushContext(".properties");
 		
 		this._info.SetProperties([
-			new SDK.PluginProperty("text", "video-url", "")
+			new SDK.PluginProperty("text", "video-url", ""),
+			new SDK.PluginProperty("text", "video-subtitles", "off")
 		]);
 		
 		SDK.Lang.PopContext();		// .properties

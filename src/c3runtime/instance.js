@@ -12,6 +12,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 
 		if (properties) {
 			this._url = properties[0];
+			this._subtitles = properties[1] || "off";
 		}
 
 		this.CreateElement();
@@ -30,7 +31,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		// and UpdateState() in domSide.js. It provides a convenient way to send all the DOM element
 		// state in one go, ensuring any changes are reflected in the real element.
 		return {
-			"url": this._url
+			"url": this._url,
+			"subtitles": this._subtitles
 		};
 	}
 
@@ -197,6 +199,21 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 	{
 		return this._url;
 	}
+
+	_SetSubtitles(language)
+	{
+		language = language || "off";
+		if (this._subtitles === language)
+			return;
+
+		this._subtitles = language;
+		this.UpdateElementState();
+	}
+
+	_GetSubtitles()
+	{
+		return this._subtitles;
+	}
 	
 
 
@@ -205,7 +222,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		// TODO: Add more state in it?
 		return {
 			// data to be saved for savegames
-			"url": this._url
+			"url": this._url,
+			"subtitles": this._subtitles
 		};
 	}
 	
@@ -213,6 +231,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 	{
 		// load state for savegames
 		this._url = o["url"];
+		this._subtitles = o["subtitles"] || "off";
 		
 		this.UpdateElementState();		// ensures any state changes are updated in the DOM
 	}
@@ -244,5 +263,15 @@ self.IGCoreVideoInstance = class IGCoreVideoInstance extends self.IDOMInstance {
 	get url()
 	{
 		return map.get(this)._GetURL();
+	}
+
+	set subtitles(s)
+	{
+		map.get(this)._SetSubtitles(s);
+	}
+
+	get subtitles()
+	{
+		return map.get(this)._GetSubtitles();
 	}
 };

@@ -80,6 +80,16 @@
 						"type": "string"
 					}
 				]
+			},
+			{
+				"id": "set-subtitles",
+				"scriptName": "SetSubtitles",
+				"params": [
+					{
+						"id": "language",
+						"type": "string"
+					}
+				]
 			}
 
 		],
@@ -107,6 +117,11 @@
 			{
 				"id": "url",
 				"expressionName": "URL",
+				"returnType": "string"
+			},
+			{
+				"id": "subtitles",
+				"expressionName": "Subtitles",
 				"returnType": "string"
 			}
 		]

@@ -18,5 +18,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	},
 	SetURL(url) {
 		this._SetURL(url);
+	},
+	SetSubtitles(language) {
+		this._SetSubtitles(language);
 	}
 };

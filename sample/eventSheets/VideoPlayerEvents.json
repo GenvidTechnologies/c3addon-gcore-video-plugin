@@ -496,16 +496,6 @@
 					"sid": 816317787308067
 				},
 				{
-					"eventType": "variable",
-					"name": "targetURL",
-					"type": "string",
-					"initialValue": "",
-					"comment": "",
-					"isStatic": true,
-					"isConstant": false,
-					"sid": 151909311512441
-				},
-				{
 					"eventType": "block",
 					"conditions": [
 						{
@@ -516,12 +506,15 @@
 					],
 					"actions": [
 						{
-							"type": "script",
-							"script": "localVars.targetURL = runtime.objects.iframe.getFirstInstance().instVars.localURL + \"?sub_lang=en\";"
+							"id": "set-subtitles",
+							"objectClass": "VideoPlayer",
+							"sid": 572800558124100,
+							"parameters": {
+								"language": "\"en\""
+							}
 						}
 					],
-					"sid": 571783487570275,
-					"disabled": true
+					"sid": 571783487570275
 				},
 				{
 					"eventType": "block",
@@ -532,9 +525,17 @@
 							"sid": 511442894250634
 						}
 					],
-					"actions": [],
-					"sid": 745026215604697,
-					"disabled": true
+					"actions": [
+						{
+							"id": "set-subtitles",
+							"objectClass": "VideoPlayer",
+							"sid": 335138399674585,
+							"parameters": {
+								"language": "\"off\""
+							}
+						}
+					],
+					"sid": 745026215604697
 				}
 			],
 			"sid": 494625520300006

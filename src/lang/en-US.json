@@ -13,6 +13,10 @@
 					"video-url": {
 						"name": "URL",
 						"desc": "The GCore Video URL"
+					},
+					"video-subtitles": {
+						"name": "Subtitles",
+						"desc": "The subtitles language for subtitles. \"off\" to turn them off."
 					}
 				},
 				"aceCategories": {
@@ -109,6 +113,17 @@
 								"desc": "The URL to load"
 							}
 						}
+					},
+					"set-subtitles": {
+						"list-name": "Set Subtitles",
+						"display-text": "Set Subtitles to {0}",
+						"description": "Set the subtitles for the video.",
+						"params": {
+							"language": {
+								"name": "Language",
+								"desc": "A language code for the subtitles, or \"off\" to turn them off."
+							}
+						}
 					}
 				},
 				"expressions": {
@@ -131,6 +146,10 @@
 					"url": {
 						"description": "The URL of the video",
 						"translated-name": "URL"
+					},
+					"subtitles": {
+						"description": "The subtitles languages for the video. \"off\" if turned off.",
+						"translated-name": "Subtitles"
 					}
 				}
 			}

@@ -43,7 +43,12 @@ PLUGIN_CLASS.Instance = class GCoreVideoInstance extends SDK.IWorldInstanceBase
 		const textZoom = iLayoutView.GetZoomFactor();
 		this._webglText.SetSize(this._inst.GetWidth(), this._inst.GetHeight(), textZoom);
 		
-		this._webglText.SetText(this._inst.GetPropertyValue("video-url"));
+		let url = this._inst.GetPropertyValue("video-url");
+		const subtitles = this._inst.GetPropertyValue("video-subtitles") || "off";
+		if (subtitles !== "off") {
+			url += "?sub_lang=" + subtitles 
+		}
+		this._webglText.SetText(url);
 	}
 	
 	// Render a button label on a grey background for the editor as a placeholder.
