@@ -1,7 +1,7 @@
 {
-	"name": "AudioStateTextHeader",
+	"name": "SubtitlesText",
 	"plugin-id": "Text",
-	"sid": 883885433511006,
+	"sid": 806051658840262,
 	"isGlobal": false,
 	"instanceVariables": [],
 	"behaviorTypes": [],

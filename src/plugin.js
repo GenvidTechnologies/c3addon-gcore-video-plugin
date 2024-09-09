@@ -11,7 +11,7 @@ const SDK = self.SDK;
 const PLUGIN_ID = "Genvidtech_GCoreVideoPlugin";
 ////////////////////////////////////////////
 
-const PLUGIN_VERSION = "1.0.0.3";
+const PLUGIN_VERSION = "1.0.0.4";
 const PLUGIN_CATEGORY = "media";
 
 const PLUGIN_CLASS = SDK.Plugins.Genvidtech_GCoreVideoPlugin = class GCoreVideoPlugin extends SDK.IPluginBase {

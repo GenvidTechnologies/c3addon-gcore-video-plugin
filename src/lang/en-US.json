@@ -61,6 +61,11 @@
 						"list-name": "Is ready",
 						"display-text": "Is ready",
 						"description": "Whether the video player is ready or not"
+					},
+					"is-offline": {
+						"list-name": "Is offline",
+						"display-text": "Is offline",
+						"description": "Whether the video player is offline or not"
 					}
 				},
 				"actions": {
@@ -108,13 +113,17 @@
 						}
 					},
 					"set-url": {
-						"list-name": "Set URL",
-						"display-text": "Load video at {0}",
+						"list-name": "Load Video",
+						"display-text": "Load video at {0} with language {1}",
 						"description": "Set the Video Player URL.",
 						"params": {
 							"url": {
 								"name": "URL",
 								"desc": "The URL to load"
+							},
+							"subtitles": {
+								"name": "Subtitles",
+								"desc": "The subtitles language to use. 'off' to disable, leave empty to keep the current setting."
 							}
 						}
 					},

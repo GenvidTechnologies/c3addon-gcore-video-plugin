@@ -12,16 +12,13 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 		return this._GetLastError().message;
 	},
 	GetCurrentPlaybackTime() {
-		const state = this._GetState();
-		return state.currentPlaybackTime;
+		return this._currentPlaybackTime;
 	},
 	GetCurrentVolume() {
-		const state = this._GetState();
-		return state.currentVolume;
+		return this._currentVolume;
 	},
 	GetDuration() {
-		const state = this._GetState();
-		return state.duration;
+		return this._duration;
 	},
 	URL() {
 		return this._GetURL();

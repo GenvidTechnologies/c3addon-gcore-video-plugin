@@ -9,21 +9,24 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 		return true;
 	},
 	IsPlaying() {
-		return this._isPlaying;
+		return this._isInitialized && this._playerState === "playing";
 	},
 	IsPaused() {
-		return this._isPaused;
+		return this._isInitialized && this._playerState === "paused";
 	},
 	IsLoading() {
-		return this._isLoading;
+		return this._playerState === "loading";
+	},
+	IsOffline() {
+		return this._playerState === "offline";
 	},
 	IsReady() {
-		return this._isReady;
+		return this._isInitialized;
 	},
 	IsEnded() {
-		return this._isEnded;
+		return this._isInitialized && this._playerState === "ended";
 	},
 	IsMuted() {
-		return this._isMuted;
+		return this._audioState === "muted";
 	}
 };

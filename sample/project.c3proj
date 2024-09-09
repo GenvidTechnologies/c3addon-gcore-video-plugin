@@ -19,7 +19,7 @@
 			"name": "GCore Video Plugin",
 			"author": "Genvid Technologies LLC",
 			"bundled": false,
-			"version": "1.0.0.3"
+			"version": "1.0.0.4"
 		},
 		{
 			"type": "plugin",
@@ -54,13 +54,12 @@
 			"LoadVideo1Button",
 			"VideoPlayer",
 			"iframe2",
-			"PlayerStateTextHeader",
+			"Header",
 			"LoadingText",
 			"SkipButton",
 			"VolumeButton",
 			"MuteButton",
 			"UnmuteButton",
-			"AudioStateTextHeader",
 			"AudioStateText",
 			"PlaybackTimeText",
 			"DurationText",
@@ -68,12 +67,10 @@
 			"VolumeText",
 			"EnglishButton",
 			"NoSubButton",
-			"PlaybackTimeTextHeader",
-			"VolumeTextHeader",
-			"DurationTextHeader",
 			"GCoreVideoPlugin",
-			"ErrorTextHeader",
-			"ErrorText"
+			"ErrorText",
+			"SubtitlesText",
+			"URLText"
 		],
 		"subfolders": []
 	},
@@ -201,7 +198,7 @@
 	},
 	"properties": {
 		"description": "GCore Video Plugin Sample integration",
-		"version": "1.0.0.3",
+		"version": "1.0.0.4",
 		"author": "Genvid Technologies, LLC",
 		"authorEmail": "support@genvidtech.com",
 		"authorWebsite": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",

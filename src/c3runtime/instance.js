@@ -35,20 +35,14 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 
 	// Initialize state when setting up or disposing player
 	_InitializeState() {
-		this._isLoading = true;
-		this._isReady = false;
-		this._isPlaying = false;
-		this._isPaused = false;
-		this._isEnded = false;
-		this._isMuted = false;
 		this._isInitialized = false;
 
 		this._currentPlaybackTime = 0;
 		this._currentVolume = -1;
 		this._duration = -1;
 
-		this._playerState = "loading";
-		this._audioState = "ready";
+		this._playerState = "offline";
+		this._audioState = "offline";
 
 		this._lastError = {
 			category: "",
@@ -58,48 +52,20 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 
 	_OnStateChanged(e) {
 		if (e.state) {
-			switch (e.state.playerState) {
-				case "ready": {
-					// Assuming that we are loading a new video
-					this._InitializeState();
-
-					this._isInitialized = true;
-
-					break;
+			if (e.state.playerState) {
+				switch (e.state.playerState) {
+					case "loading":
+					case "offline": {
+						this._InitializeState();
+						break;
+					}
 				}
-				case "playing": {
-					this._isPlaying = true;
-					this._isPaused = false;
-					this._isEnded = false;
-					this._playerState = "playing";
-
-					break;
-				}
-				case "paused": {
-					this._isPaused = true;
-					this._isPlaying = false;
-					this._isEnded = false;
-					this._playerState = "paused";
-
-					break;
-				}
-				case "ended": {
-					this._isPlaying = false;
-					this._isPaused = false;
-					this._isEnded = true;
-					this._playerState = "ended";
-
-					break;
-				}
+				this._playerState = e.state.playerState;
 			}
 
 			// Check if audio state has been updated
-			if (e.state.audioState === "muted" && !this._isMuted) {
-				this._isMuted = true;
-				this._audioState = "muted";
-			} else if (e.state.audioState === "unmuted" && this._isMuted) {
-				this._isMuted = false;
-				this._audioState = "unmuted";
+			if (e.state.audioState) {
+				this._audioState = e.state.audioState;
 			}
 
 			if (e.state.currentPlaybackTime) {
@@ -107,11 +73,10 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 			}
 
 			if (e.state.currentVolume) {
+				// Should we differed treatment of volume and mute?
 				if (e.state.currentVolume === 0) {
-					this._isMuted = true;
 					this._audioState = "muted";
-				} else if (e.state.currentVolume > 0 && this._isMuted) {
-					this._isMuted = false;
+				} else if (e.state.currentVolume > 0) {
 					this._audioState = "unmuted";
 				}
 				this._currentVolume = e.state.currentVolume;
@@ -123,19 +88,9 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 
 			// Finally mark the player as ready when current volume and duration values have been retrieved
 			if (!this._isReady && this._currentVolume > -1 && this._duration > -1) {
-				this._isLoading = false;
-				this._isReady = true;
-				this._playerState = "ready";
+				this._isInitialized = true;
 			}
 		}
-
-		this._SetState({
-			playerState: this._playerState,
-			audioState: this._audioState,
-			currentVolume: this._currentVolume,
-			duration: this._duration,
-			currentPlaybackTime: this._currentPlaybackTime,
-		});
 
 		this.Trigger(C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds.OnStateChanged);
 	}
@@ -162,19 +117,11 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 	}
 
 	_SetPlaybackTime(playbackTime) {
-		const state = this._GetState();
-		state.requestedPlaybackTime = playbackTime;
-		this._SetState(state);
-
-		this.PostToDOMElement("seek", this._GetState());
+		this.PostToDOMElement("seek", { requestedPlaybackTime: playbackTime });
 	}
 
 	_SetVolume(level) {
-		const state = this._GetState();
-		state.requestedVolume = level;
-		this._SetState(state);
-
-		this.PostToDOMElement("setVolume", this._GetState());
+		this.PostToDOMElement("setVolume", { requestedVolume: level });
 	}
 
 	_SetMuted(mute) {
@@ -185,24 +132,30 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		}
 	}
 
-	_SetState(state) {
-		// Update the local video player state
-		this._state = state;
-	}
-
 	_GetState() {
-		return this._state;
+		return {
+			playerState: this._playerState,
+			audioState: this._audioState,
+			currentVolume: this._currentVolume,
+			duration: this._duration,
+			currentPlaybackTime: this._currentPlaybackTime,
+		};
 	}
 
-	_SetURL(url) {
-		if (this._url === url)
-			return;						// no change
+	_SetURL(url, subtitles) {
+		if (subtitles === "") {
+			subtitles = this._subtitles
+		}
+		if (this._url === url && this._subtitles === subtitles) {
+			return;
+		}
 
 		// Update the locally stored text, and call UpdateElementState().
 		// This calls GetElementState() - which contains the button text as part of the state -
 		// and then calls UpdateState() in domSide.js with the state object, where the button text
 		// is applied to the DOM element.
 		this._url = url;
+		this._subtitles = subtitles;
 		this.UpdateElementState();
 	}
 

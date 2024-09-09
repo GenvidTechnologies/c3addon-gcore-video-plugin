@@ -39,7 +39,7 @@
 
 			// The create message includes the state retrieved by GetElementState() in instance.js,
 			// so also update the element state based on those details.
-			handler.UpdateState(e, true);
+			handler.UpdateState(e);
 
 			console.log("IFrame created:", element);
 
@@ -59,7 +59,7 @@
 			// NOTE: the runtime automatically manages the position, size and visibility of the DOM
 			// element, so this only needs to handle state unique to the element, such as the button
 			// text in this case.
-			this._handlers.Get(elem).UpdateState(e, false);
+			this._handlers.Get(elem).UpdateState(e);
 		}
 	};
 

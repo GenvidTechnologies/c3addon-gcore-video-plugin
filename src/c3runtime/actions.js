@@ -16,8 +16,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	SetVolume(level) {
 		this._SetVolume(level);
 	},
-	SetURL(url) {
-		this._SetURL(url);
+	SetURL(url, subtitles) {
+		this._SetURL(url, subtitles);
 	},
 	SetSubtitles(language) {
 		this._SetSubtitles(language);

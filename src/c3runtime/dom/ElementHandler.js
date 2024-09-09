@@ -55,10 +55,12 @@
 		}
 
 		OnLoad() {
-			console.log("iframe loaded", this.element.src);
-			if (this.gplayerAPI === null) {
-				this.CreatePlayer();
-				console.log("Player created", this.gplayerAPI);
+			if (this.element.src !== "") {
+				if (this.gplayerAPI === null) {
+					console.log("iframe loaded", this.element.src);
+					this.CreatePlayer();
+					console.log("Player created", this.gplayerAPI);
+				}
 			}
 		}
 
@@ -67,18 +69,23 @@
 			this.PostErrorToRuntime("iframe", `Error loading ${this.element.src}`);
 		}
 
-		UpdateState(e, isNew) {
+		UpdateState(e) {
 			let url = e["url"];
 			const language = e["subtitles"] || "off";
-			if (language !== "off") {
+			if (url !== "" && language !== "off") {
 				url += "?sub_lang=" + language;
 			}
-			if (this.element.src != url) {
-				console.debug("Loading", url);
-				this.element.src = url;
-				if (!isNew) {
-					this.PostStateToRuntime({ playerState: "loading" });
+			if (this.element.src !== url) {
+				let playerState = "offline";
+				if (url !== "") {
+					console.debug("Loading", url);
+					playerState = "loading";
+				} else {
+					console.debug("Offloading video player");
+					this.DestroyPlayer();
 				}
+				this.element.src = url;
+				this.PostStateToRuntime({ playerState });
 			}
 		}
 		CreatePlayer() {
@@ -146,22 +153,22 @@
 				console.log("[video player]", "Ready");
 
 				this.isInitialized = false;
-				this.PostStateToRuntime({
-					playerState: "ready",
-				});
 
 				// Actually load the video for the first time.
 				this.OnPlay();
 			});
 		}
-		Destroy() {
-			// remove event listeners
-			this.controller.abort();
-			this.element.src = "";
+		DestroyPlayer() {
 			if (this.gplayerAPI) {
 				this.gplayerAPI.removeAllListeners();
 				this.gplayerAPI = null;
 			}
+		}
+		Destroy() {
+			// remove event listeners
+			this.controller.abort();
+			this.element.src = "";
+			this.DestroyPlayer();
 		}
 
 		OnPlay() {

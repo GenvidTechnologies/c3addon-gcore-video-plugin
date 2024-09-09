@@ -25,245 +25,13 @@
 							"parameters": {
 								"visibility": "invisible"
 							}
+						},
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 368461651416906
 						}
 					],
 					"sid": 817217549178587
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-loading",
-							"objectClass": "VideoPlayer",
-							"sid": 508554559047798
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 204424756120213
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "PlayerStateText",
-							"sid": 752090220114647,
-							"parameters": {
-								"text": "\"Loading\""
-							}
-						}
-					],
-					"sid": 143670957086949
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-ready",
-							"objectClass": "VideoPlayer",
-							"sid": 752277306131849
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 620075387048187
-						}
-					],
-					"actions": [
-						{
-							"id": "set-visible",
-							"objectClass": "VideoPlayer",
-							"sid": 996879889516135,
-							"parameters": {
-								"visibility": "visible"
-							}
-						},
-						{
-							"id": "set-text",
-							"objectClass": "PlayerStateText",
-							"sid": 933471033134315,
-							"parameters": {
-								"text": "\"Ready\""
-							}
-						},
-						{
-							"id": "set-text",
-							"objectClass": "DurationText",
-							"sid": 857222396810717,
-							"parameters": {
-								"text": "VideoPlayer.GetDuration"
-							}
-						},
-						{
-							"id": "set-text",
-							"objectClass": "VolumeText",
-							"sid": 967322932514696,
-							"parameters": {
-								"text": "VideoPlayer.GetCurrentVolume"
-							}
-						}
-					],
-					"sid": 886817470416088
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-playing",
-							"objectClass": "VideoPlayer",
-							"sid": 483602874289203
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 732103614292212
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "PlayerStateText",
-							"sid": 211568381809580,
-							"parameters": {
-								"text": "\"Playing\""
-							}
-						}
-					],
-					"sid": 865792295479756
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-paused",
-							"objectClass": "VideoPlayer",
-							"sid": 954118762140358
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 485841306480982
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "PlayerStateText",
-							"sid": 683150479842944,
-							"parameters": {
-								"text": "\"Paused\""
-							}
-						}
-					],
-					"sid": 520422147026647
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-ended",
-							"objectClass": "VideoPlayer",
-							"sid": 608885052847793
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 623660250096806
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "PlayerStateText",
-							"sid": 954542867760444,
-							"parameters": {
-								"text": "\"Ended\""
-							}
-						}
-					],
-					"sid": 533792403953503
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-muted",
-							"objectClass": "VideoPlayer",
-							"sid": 602940089000310
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 313779828110383
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "AudioStateText",
-							"sid": 573615575745293,
-							"parameters": {
-								"text": "\"Muted\""
-							}
-						}
-					],
-					"sid": 439268442049821
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "is-muted",
-							"objectClass": "VideoPlayer",
-							"sid": 493882032032967,
-							"isInverted": true
-						},
-						{
-							"id": "trigger-once-while-true",
-							"objectClass": "System",
-							"sid": 550891237647332
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "AudioStateText",
-							"sid": 624249867045121,
-							"parameters": {
-								"text": "\"Unmuted\""
-							}
-						}
-					],
-					"sid": 236740026197500
-				},
-				{
-					"eventType": "block",
-					"conditions": [
-						{
-							"id": "on-state-changed",
-							"objectClass": "VideoPlayer",
-							"sid": 750399817155581
-						}
-					],
-					"actions": [
-						{
-							"id": "set-text",
-							"objectClass": "PlaybackTimeText",
-							"sid": 819938601487645,
-							"parameters": {
-								"text": "VideoPlayer.GetCurrentPlaybackTime"
-							}
-						},
-						{
-							"id": "set-text",
-							"objectClass": "VolumeText",
-							"sid": 910824907663023,
-							"parameters": {
-								"text": "VideoPlayer.GetCurrentVolume"
-							}
-						}
-					],
-					"sid": 344835701023923
 				},
 				{
 					"eventType": "block",
@@ -285,6 +53,67 @@
 						}
 					],
 					"sid": 722610739347360
+				},
+				{
+					"eventType": "block",
+					"conditions": [
+						{
+							"id": "on-state-changed",
+							"objectClass": "VideoPlayer",
+							"sid": 645820067278843
+						}
+					],
+					"actions": [
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 287242412676141
+						}
+					],
+					"sid": 930875606573257,
+					"children": [
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "is-ready",
+									"objectClass": "VideoPlayer",
+									"sid": 700561711760281
+								}
+							],
+							"actions": [
+								{
+									"id": "set-visible",
+									"objectClass": "VideoPlayer",
+									"sid": 840182420622705,
+									"parameters": {
+										"visibility": "visible"
+									}
+								}
+							],
+							"sid": 536202009023990
+						},
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "else",
+									"objectClass": "System",
+									"sid": 351170786105734
+								}
+							],
+							"actions": [
+								{
+									"id": "set-visible",
+									"objectClass": "VideoPlayer",
+									"sid": 870063052941490,
+									"parameters": {
+										"visibility": "invisible"
+									}
+								}
+							],
+							"sid": 828548331932225
+						}
+					]
 				}
 			],
 			"sid": 787197576674853
@@ -376,8 +205,13 @@
 							"objectClass": "VideoPlayer",
 							"sid": 771308354467195,
 							"parameters": {
-								"url": "\"https://player.gvideo.co/videos/421804_JUpVsXgbH6ky2vAW\""
+								"url": "\"https://player.gvideo.co/videos/421804_JUpVsXgbH6ky2vAW\"",
+								"subtitles": "\"\""
 							}
+						},
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 376026279734854
 						}
 					],
 					"sid": 743415191310776
@@ -405,8 +239,13 @@
 							"objectClass": "VideoPlayer",
 							"sid": 192662466680905,
 							"parameters": {
-								"url": "\"https://player.gvideo.co/videos/2675_cC4PEC0AWy1qu03R\""
+								"url": "\"https://player.gvideo.co/videos/2675_cC4PEC0AWy1qu03R\"",
+								"subtitles": "\"\""
 							}
+						},
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 216061980752087
 						}
 					],
 					"sid": 286520333457171
@@ -533,6 +372,10 @@
 							"parameters": {
 								"language": "\"en\""
 							}
+						},
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 981353463353104
 						}
 					],
 					"sid": 571783487570275
@@ -554,9 +397,271 @@
 							"parameters": {
 								"language": "\"off\""
 							}
+						},
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 435480781402758
 						}
 					],
 					"sid": 745026215604697
+				},
+				{
+					"functionName": "UpdateURLUI",
+					"functionDescription": "",
+					"functionCategory": "",
+					"functionReturnType": "none",
+					"functionCopyPicked": false,
+					"functionIsAsync": false,
+					"functionParameters": [],
+					"eventType": "function-block",
+					"conditions": [],
+					"actions": [
+						{
+							"id": "set-text",
+							"objectClass": "URLText",
+							"sid": 176384608156442,
+							"parameters": {
+								"text": "VideoPlayer.URL"
+							}
+						},
+						{
+							"id": "set-text",
+							"objectClass": "SubtitlesText",
+							"sid": 340779605851623,
+							"parameters": {
+								"text": "VideoPlayer.Subtitles"
+							}
+						},
+						{
+							"id": "set-text",
+							"objectClass": "PlaybackTimeText",
+							"sid": 571195530283999,
+							"parameters": {
+								"text": "VideoPlayer.GetCurrentPlaybackTime"
+							}
+						},
+						{
+							"id": "set-text",
+							"objectClass": "VolumeText",
+							"sid": 973822504086562,
+							"parameters": {
+								"text": "VideoPlayer.GetCurrentVolume"
+							}
+						},
+						{
+							"id": "set-text",
+							"objectClass": "DurationText",
+							"sid": 709425737721480,
+							"parameters": {
+								"text": "VideoPlayer.GetDuration"
+							}
+						}
+					],
+					"sid": 429398302849430,
+					"children": [
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "is-offline",
+									"objectClass": "VideoPlayer",
+									"sid": 142102250342928
+								}
+							],
+							"actions": [
+								{
+									"id": "set-text",
+									"objectClass": "PlayerStateText",
+									"sid": 507005054058209,
+									"parameters": {
+										"text": "\"Offline\""
+									}
+								}
+							],
+							"sid": 338364066468024
+						},
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "else",
+									"objectClass": "System",
+									"sid": 628557457049542
+								},
+								{
+									"id": "is-loading",
+									"objectClass": "VideoPlayer",
+									"sid": 517292178486820
+								}
+							],
+							"actions": [
+								{
+									"id": "set-text",
+									"objectClass": "PlayerStateText",
+									"sid": 991066123738147,
+									"parameters": {
+										"text": "\"Loading\""
+									}
+								}
+							],
+							"sid": 652775101784443
+						},
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "else",
+									"objectClass": "System",
+									"sid": 675472899746449
+								},
+								{
+									"id": "is-ready",
+									"objectClass": "VideoPlayer",
+									"sid": 865831030708873
+								}
+							],
+							"actions": [],
+							"sid": 656960465411310,
+							"children": [
+								{
+									"eventType": "block",
+									"conditions": [
+										{
+											"id": "is-playing",
+											"objectClass": "VideoPlayer",
+											"sid": 389814593399113
+										}
+									],
+									"actions": [
+										{
+											"id": "set-text",
+											"objectClass": "PlayerStateText",
+											"sid": 432982937853680,
+											"parameters": {
+												"text": "\"Playing\""
+											}
+										}
+									],
+									"sid": 413287266036848
+								},
+								{
+									"eventType": "block",
+									"conditions": [
+										{
+											"id": "else",
+											"objectClass": "System",
+											"sid": 317405005196925
+										},
+										{
+											"id": "is-paused",
+											"objectClass": "VideoPlayer",
+											"sid": 235984740755551
+										}
+									],
+									"actions": [
+										{
+											"id": "set-text",
+											"objectClass": "PlayerStateText",
+											"sid": 794066058968232,
+											"parameters": {
+												"text": "\"Paused\""
+											}
+										}
+									],
+									"sid": 410738213518925
+								},
+								{
+									"eventType": "block",
+									"conditions": [
+										{
+											"id": "else",
+											"objectClass": "System",
+											"sid": 875734718795322
+										},
+										{
+											"id": "is-ended",
+											"objectClass": "VideoPlayer",
+											"sid": 819304289330612
+										}
+									],
+									"actions": [
+										{
+											"id": "set-text",
+											"objectClass": "PlayerStateText",
+											"sid": 232061925189364,
+											"parameters": {
+												"text": "\"Ended\""
+											}
+										}
+									],
+									"sid": 489531495013340
+								},
+								{
+									"eventType": "block",
+									"conditions": [
+										{
+											"id": "else",
+											"objectClass": "System",
+											"sid": 458524783806890
+										}
+									],
+									"actions": [
+										{
+											"id": "set-text",
+											"objectClass": "PlayerStateText",
+											"sid": 538590028557951,
+											"parameters": {
+												"text": "\"Ready\""
+											}
+										}
+									],
+									"sid": 308081514402876
+								}
+							]
+						},
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "is-muted",
+									"objectClass": "VideoPlayer",
+									"sid": 445511644661660
+								}
+							],
+							"actions": [
+								{
+									"id": "set-text",
+									"objectClass": "AudioStateText",
+									"sid": 944146234562749,
+									"parameters": {
+										"text": "\"Muted\""
+									}
+								}
+							],
+							"sid": 743064939146839
+						},
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "else",
+									"objectClass": "System",
+									"sid": 752944065284674
+								}
+							],
+							"actions": [
+								{
+									"id": "set-text",
+									"objectClass": "AudioStateText",
+									"sid": 248289365903255,
+									"parameters": {
+										"text": "\"Unmuted\""
+									}
+								}
+							],
+							"sid": 107728878601040
+						}
+					]
 				}
 			],
 			"sid": 494625520300006
