@@ -38,24 +38,23 @@
 					}
 				},
 				{
-					"type": "iframe2",
+					"type": "VideoPlayer",
 					"properties": {
-						"url": "https://player.gvideo.co/videos/2675_cC4PEC0AWy1qu03R",
-						"html": "",
-						"initially-visible": true,
-						"id": "gplayer",
-						"allow": "fullscreen; autoplay; encrypted-media",
-						"enable-sandbox": false,
-						"sandbox": "allow-scripts"
+						"video-url": "https://player.gvideo.co/videos/421804_JUpVsXgbH6ky2vAW",
+						"video-subtitles": "off"
 					},
-					"uid": 11,
+					"uid": 4,
 					"instanceVariables": {},
-					"behaviors": {},
+					"behaviors": {
+						"Persist": {
+							"properties": {}
+						}
+					},
 					"world": {
-						"x": 32,
-						"y": 36,
-						"width": 300,
-						"height": 200,
+						"x": 30,
+						"y": 158,
+						"width": 437,
+						"height": 295,
 						"originX": 0,
 						"originY": 0,
 						"color": [

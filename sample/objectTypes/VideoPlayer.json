@@ -4,5 +4,11 @@
 	"sid": 654619375241237,
 	"isGlobal": false,
 	"instanceVariables": [],
-	"behaviorTypes": []
+	"behaviorTypes": [
+		{
+			"behaviorId": "Persist",
+			"name": "Persist",
+			"sid": 422565808689755
+		}
+	]
 }

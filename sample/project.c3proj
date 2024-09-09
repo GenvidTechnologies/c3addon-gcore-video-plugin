@@ -1,6 +1,6 @@
 {
 	"projectFormatVersion": 1,
-	"savedWithRelease": 39700,
+	"savedWithRelease": 39702,
 	"name": "Genvid GCore Video Plugin Sample",
 	"runtime": "c3",
 	"useWorker": "worker",
@@ -19,7 +19,7 @@
 			"name": "GCore Video Plugin",
 			"author": "Genvid Technologies LLC",
 			"bundled": false,
-			"version": "1.0.0.2"
+			"version": "1.0.0.3"
 		},
 		{
 			"type": "plugin",
@@ -32,6 +32,13 @@
 			"type": "plugin",
 			"id": "iframe",
 			"name": "iframe",
+			"author": "Scirra",
+			"bundled": false
+		},
+		{
+			"type": "behavior",
+			"id": "Persist",
+			"name": "Persist",
 			"author": "Scirra",
 			"bundled": false
 		}
@@ -63,7 +70,8 @@
 			"NoSubButton",
 			"PlaybackTimeTextHeader",
 			"VolumeTextHeader",
-			"DurationTextHeader"
+			"DurationTextHeader",
+			"GCoreVideoPlugin"
 		],
 		"subfolders": []
 	},
@@ -191,7 +199,7 @@
 	},
 	"properties": {
 		"description": "GCore Video Plugin Sample integration",
-		"version": "1.0.0.2",
+		"version": "1.0.0.3",
 		"author": "Genvid Technologies, LLC",
 		"authorEmail": "support@genvidtech.com",
 		"authorWebsite": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",

@@ -1,21 +1,20 @@
 ﻿{
 	"$schema": "../SDK/plugin-sdk/v1/plugin.addon.schema.json",
-	
 	"is-c3-addon": true,
 	"sdk-version": 1,
 	"type": "plugin",
 	"name": "GCore Video",
 	"id": "Genvidtech_GCoreVideoPlugin",
-	"version": "1.0.0.2",
+	"version": "1.0.0.3",
 	"author": "Genvid Technologies, LLC",
 	"website": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",
 	"documentation": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",
 	"description": "Gcore Video Player integration by Genvid Technologies.",
 	"editor-scripts": [
-						"plugin.js",
-						"type.js",
-						"instance.js"
-					],
+		"plugin.js",
+		"type.js",
+		"instance.js"
+	],
 	"file-list": [
 		"c3runtime/plugin.js",
 		"c3runtime/type.js",

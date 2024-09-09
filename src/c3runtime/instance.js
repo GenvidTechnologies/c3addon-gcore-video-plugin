@@ -17,16 +17,13 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 
 		this.CreateElement();
 	}
-	
+
 	Release() {
 		this._InitializeState();
-		this.PostToDOM("dispose");
-
 		super.Release();
 	}
 
-	GetElementState()
-	{
+	GetElementState() {
 		// Return JSON with the state of the element. This is passed along to both CreateElement()
 		// and UpdateState() in domSide.js. It provides a convenient way to send all the DOM element
 		// state in one go, ensuring any changes are reflected in the real element.
@@ -54,7 +51,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		this._audioState = "ready";
 
 	}
-	
+
 	_OnStateChanged(e) {
 		if (e.state) {
 			switch (e.state.playerState) {
@@ -71,7 +68,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 					this._isPaused = false;
 					this._isEnded = false;
 					this._playerState = "playing";
-			
+
 					break;
 				}
 				case "paused": {
@@ -87,7 +84,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 					this._isPaused = false;
 					this._isEnded = true;
 					this._playerState = "ended";
-		
+
 					break;
 				}
 			}
@@ -127,7 +124,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 				this._playerState = "ready";
 			}
 		}
-	
+
 		this._SetState({
 			playerState: this._playerState,
 			audioState: this._audioState,
@@ -139,17 +136,16 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		this.Trigger(C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds.OnStateChanged);
 	}
 
-	Draw(renderer)
-	{
+	Draw(renderer) {
 		// not used - a DOM element is positioned at this instance instead
 	}
-	
+
 	_Play() {
-		this.PostToDOM("play");
+		this.PostToDOMElement("play");
 	}
 
 	_Pause() {
-		this.PostToDOM("pause");
+		this.PostToDOMElement("pause");
 	}
 
 	_SetPlaybackTime(playbackTime) {
@@ -157,7 +153,7 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		state.requestedPlaybackTime = playbackTime;
 		this._SetState(state);
 
-		this.PostToDOM("seek", this._GetState());
+		this.PostToDOMElement("seek", this._GetState());
 	}
 
 	_SetVolume(level) {
@@ -165,16 +161,16 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		state.requestedVolume = level;
 		this._SetState(state);
 
-		this.PostToDOM("setVolume", this._GetState());
+		this.PostToDOMElement("setVolume", this._GetState());
 	}
 
 	_SetMuted(mute) {
 		if (mute) {
-			this.PostToDOM("mute");
+			this.PostToDOMElement("mute");
 		} else {
-			this.PostToDOM("unmute");
+			this.PostToDOMElement("unmute");
 		}
-	}	
+	}
 
 	_SetState(state) {
 		// Update the local video player state
@@ -185,11 +181,10 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		return this._state;
 	}
 
-	_SetURL(url)
-	{
+	_SetURL(url) {
 		if (this._url === url)
 			return;						// no change
-		
+
 		// Update the locally stored text, and call UpdateElementState().
 		// This calls GetElementState() - which contains the button text as part of the state -
 		// and then calls UpdateState() in domSide.js with the state object, where the button text
@@ -198,13 +193,11 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		this.UpdateElementState();
 	}
 
-	_GetURL()
-	{
+	_GetURL() {
 		return this._url;
 	}
 
-	_SetSubtitles(language)
-	{
+	_SetSubtitles(language) {
 		language = language || "off";
 		if (this._subtitles === language)
 			return;
@@ -213,15 +206,13 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 		this.UpdateElementState();
 	}
 
-	_GetSubtitles()
-	{
+	_GetSubtitles() {
 		return this._subtitles;
 	}
-	
 
 
-	SaveToJson()
-	{
+
+	SaveToJson() {
 		// TODO: Add more state in it?
 		return {
 			// data to be saved for savegames
@@ -229,13 +220,12 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 			"subtitles": this._subtitles
 		};
 	}
-	
-	LoadFromJson(o)
-	{
+
+	LoadFromJson(o) {
 		// load state for savegames
 		this._url = o["url"];
 		this._subtitles = o["subtitles"] || "off";
-		
+
 		this.UpdateElementState();		// ensures any state changes are updated in the DOM
 	}
 
@@ -249,32 +239,27 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Instance = class GCoreVideoInstance exten
 const map = new WeakMap();
 
 self.IGCoreVideoInstance = class IGCoreVideoInstance extends self.IDOMInstance {
-	constructor()
-	{
+	constructor() {
 		super();
-		
+
 		// Map by SDK instance
 		map.set(this, self.IInstance._GetInitInst().GetSdkInstance());
 	}
 
 	// Example setter/getter property on script interface
-	set url(u)
-	{
+	set url(u) {
 		map.get(this)._SetURL(u);
 	}
 
-	get url()
-	{
+	get url() {
 		return map.get(this)._GetURL();
 	}
 
-	set subtitles(s)
-	{
+	set subtitles(s) {
 		map.get(this)._SetSubtitles(s);
 	}
 
-	get subtitles()
-	{
+	get subtitles() {
 		return map.get(this)._GetSubtitles();
 	}
 };

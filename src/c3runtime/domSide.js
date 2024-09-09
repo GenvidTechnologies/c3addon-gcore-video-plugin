@@ -22,140 +22,122 @@
 		e.stopPropagation();
 	}
 
-	const HANDLER_CLASS = class GCoreVideoDOMHandler extends self.DOMElementHandler {
-		constructor(iRuntime) {
-			super(iRuntime, DOM_COMPONENT_ID);
-
-			this._initialized = false;
+	class ElementHandler {
+		constructor(element, elementId, domHandler) {
+			this.element = element;
+			this.elementId = elementId;
+			this.handler = domHandler;
 			this.gplayerAPI = null;
+			this.isInitialized = false;
+			this.controller = new AbortController();
 
-			this.AddRuntimeMessageHandlers([
-				["play", e => this._OnPlay()],
-				["pause", e => this._OnPause()],
-				["mute", e => this._OnMute()],
-				["unmute", e => this._OnUnmute()],
-				["seek", e => this._OnSeek(e)],
-				["setVolume", e => this._OnSetVolume(e)],
-				["dispose", e => this._OnDispose()]
-			]);
+			this.Setup();
 		}
 
-		CreateElement(elementId, e) {
-			this._elementId = elementId;
-			const elem = document.createElement("iframe");
-			elem.style.position = "absolute";
-			elem.style.border = "none";
-			elem.style.pointerEvents = "none";
-			elem.allow = "autoplay; encrypted-media"
+		Setup() {
+			const { signal } = this.controller;
+			this.element.addEventListener("load", () => this.OnLoad(), { signal });
 
-			// Prevent touches reaching the canvas
-			elem.addEventListener("touchstart", StopPropagation);
-			elem.addEventListener("touchmove", StopPropagation);
-			elem.addEventListener("touchend", StopPropagation);
+			const interactiveEvents = [
+				"touchstart",
+				"touchmove",
+				"touchend",
+				"mousedown",
+				"mouseup",
+				"mousedown",
+				"mouseup",
+				"keydown",
+				"keyup",
+				"click",
+			];
+			interactiveEvents.map((e) =>
+				this.element.addEventListener(e, StopPropagation, { signal })
+			);
 
-			// Prevent clicks being blocked
-			elem.addEventListener("mousedown", StopPropagation);
-			elem.addEventListener("mouseup", StopPropagation);
-
-			// Prevent key presses being blocked by the Keyboard object
-			elem.addEventListener("keydown", StopPropagation);
-			elem.addEventListener("keyup", StopPropagation);
-
-			elem.addEventListener("click", StopPropagation);
-
-			elem.addEventListener("load", () => {
-				console.log("iframe loaded", elem.src);
-				if (this.gplayerAPI === null) {
-					this._CreatePlayer(elem);
-					console.log("Player created", this.gplayerAPI);	
-				}
-			});
-
-			// The create message includes the state retrieved by GetElementState() in instance.js,
-			// so also update the element state based on those details.
-			this.UpdateState(elem, e, true);
-
-
-			console.log("IFrame created:", elem);
-
-			return elem;
+			this.element.style.position = "absolute";
+			this.element.style.border = "none";
+			this.element.style.pointerEvents = "none";
+			this.element.allow = "autoplay; encrypted-media";
 		}
 
-		UpdateState(elem, e, isNew = false) {
-			// Update the state of the DOM element 'elem' with the state 'e'. The state has been
-			// retrieved by calling GetElementState() in instance.js, which includes all necessary
-			// details to set the correct state of the DOM element.
-			// NOTE: the runtime automatically manages the position, size and visibility of the DOM
-			// element, so this only needs to handle state unique to the element, such as the button
-			// text in this case.
+		PostToRuntime(event, data) {
+			this.handler.PostToRuntimeElement(event, this.elementId, data);
+		}
+
+		PostStateToRuntime(state) {
+			this.PostToRuntime("state-changed", { state });
+		}
+
+		OnLoad() {
+			console.log("iframe loaded", this.element.src);
+			if (this.gplayerAPI === null) {
+				this.CreatePlayer();
+				console.log("Player created", this.gplayerAPI);
+			}
+		}
+		UpdateState(e, isNew) {
 			let url = e["url"];
 			const language = e["subtitles"] || "off";
 			if (language !== "off") {
 				url += "?sub_lang=" + language;
 			}
-			if (elem.src != url) {
+			if (this.element.src != url) {
 				console.debug("Loading", url);
-				elem.src = url;
+				this.element.src = url;
 				if (!isNew) {
-					this._PostStateToRuntime({playerState: "loading"});
+					this.PostStateToRuntime({ playerState: "loading" });
 				}
 			}
 		}
-
-		_PostStateToRuntime(state) {
-			this.PostToRuntimeElement("state-changed", this._elementId, { state });
-		}
-
-
-		_CreatePlayer(elem) {
-
+		CreatePlayer() {
 			console.log("Setting up new player");
 			if (window.GcorePlayer && window.GcorePlayer.gplayerAPI) {
 				// Initialize the player
-				this.gplayerAPI = new GcorePlayer.gplayerAPI(elem);
+				this.gplayerAPI = new GcorePlayer.gplayerAPI(this.element);
 			} else {
 				console.error("[video player] GcorePlayer or gplayerAPI not found");
 				throw new Error("GCore Player API not found");
 			}
 
-			this.gplayerAPI.on('error', (err) => {
+			this.gplayerAPI.on("error", (err) => {
 				console.error("VideoPlayer API Error", err);
-				// TODO: Send it to runtime and add a trigger/conditions.			
+				// TODO: Send it to runtime and add a trigger/conditions.
 			});
 
 			this.gplayerAPI.on("play", () => {
 				console.log("[video player]", "Playing");
 
-				if (this._initialized) {
-					this._PostStateToRuntime({
-						playerState: "playing"
+				if (this.isInitialized) {
+					this.PostStateToRuntime({
+						playerState: "playing",
 					});
 				} else {
-					this._OnPause();
-					this._OnGetDuration();
-					this._OnGetVolume();
+					// Sequence that load the video and ensure the state is ready.
+					// Also seems to avoid the fullscreen pop on iOS, sometimes...
+					this.OnPause();
+					this.GetDuration();
+					this.GetVolume();
 				}
 			});
 
 			this.gplayerAPI.on("pause", () => {
 				console.log("[video player]", "Paused");
-				this._initialized = true;
-				this._PostStateToRuntime({
-					playerState: "paused"
+				this.isInitialized = true;
+				this.PostStateToRuntime({
+					playerState: "paused",
 				});
 			});
 
 			this.gplayerAPI.on("timeupdate", (e) => {
-				this._PostStateToRuntime({
-
-					currentPlaybackTime: e.current
+				this.PostStateToRuntime({
+					currentPlaybackTime: e.current,
 				});
 			});
 
 			this.gplayerAPI.on("volumeupdate", (e) => {
 				console.log("[video player] Volume updated", e);
 
-				this._PostStateToRuntime({
+				this.PostStateToRuntime({
 					currentVolume: e,
 				});
 			});
@@ -163,109 +145,202 @@
 			this.gplayerAPI.on("ended", () => {
 				console.log("[video player]", "Ended");
 
-				this._PostStateToRuntime({
-					playerState: "ended"
+				this.PostStateToRuntime({
+					playerState: "ended",
 				});
 			});
 
 			this.gplayerAPI.on("ready", () => {
 				console.log("[video player]", "Ready");
 
-				this._initialized = false;
-				this._PostStateToRuntime({
+				this.isInitialized = false;
+				this.PostStateToRuntime({
 					playerState: "ready",
 				});
 
 				// Actually load the video for the first time.
-				this._OnPlay();
+				this.OnPlay();
 			});
 		}
+		Destroy() {
+			this.element.removeEventListener("load", this._OnLoadListener);
+			this.element.src = "";
+			if (this.gplayerAPI) {
+				this.gplayerAPI.removeAllListeners();
+				this.gplayerAPI = null;
+			}
+		}
 
-		_OnPlay() {
+		OnPlay() {
 			console.log("[video player] Play requested");
 			this.gplayerAPI.method({ name: "play" });
 		}
 
-		_OnPause() {
+		OnPause() {
 			console.log("[video player] Pause requested");
 			this.gplayerAPI.method({ name: "pause" });
 		}
 
-		_OnSeek(state) {
+		OnSeek(state) {
 			console.log("[video player] Seek requested", state.requestedPlaybackTime);
 			if (state.requestedPlaybackTime) {
 				this.gplayerAPI.method({
 					name: "seek",
-					params: state.requestedPlaybackTime
+					params: state.requestedPlaybackTime,
 				});
 			}
 		}
 
-		_OnSetVolume(state) {
+		OnSetVolume(state) {
 			console.log("[video player] Set volume requested", state.requestedVolume);
 			if (state.requestedVolume) {
 				this.gplayerAPI.method({
 					name: "setVolume",
-					params: state.requestedVolume
+					params: state.requestedVolume,
 				});
 			}
 		}
 
-		_OnMute() {
+		OnMute() {
 			console.log("[video player]", "Mute requested");
 			this.gplayerAPI.method({
-				name: "mute", callback: () => {
+				name: "mute",
+				callback: () => {
 					console.log("[video player]", "Muted");
 
-					this._PostStateToRuntime({
+					this.PostStateToRuntime({
 						audioState: "muted",
 					});
-				}
+				},
 			});
 		}
 
-		_OnUnmute() {
+		OnUnmute() {
 			console.log("[video player]", "Unmute requested");
 			this.gplayerAPI.method({
-				name: "unmute", callback: () => {
+				name: "unmute",
+				callback: () => {
 					console.log("[video player]", "Unmuted");
 
-					this._PostStateToRuntime({
+					this.PostStateToRuntime({
 						audioState: "unmuted",
 					});
-				}
+				},
 			});
 		}
 
-		_OnGetDuration() {
+		GetDuration() {
 			console.log("[video player]", "Current duration requested");
 			this.gplayerAPI.method({
-				name: "getDuration", callback: (res) => {
+				name: "getDuration",
+				callback: (res) => {
 					console.log("[video player] Duration", res);
 
-					this._PostStateToRuntime({
+					this.PostStateToRuntime({
 						duration: res,
 					});
-				}
+				},
 			});
 		}
 
-		_OnGetVolume() {
+		GetVolume() {
 			console.log("[video player]", "Current volume requested");
 			this.gplayerAPI.method({
-				name: "getVolume", callback: (res) => {
+				name: "getVolume",
+				callback: (res) => {
 					console.log("[video player] Current volume", res);
 
-					this._PostStateToRuntime({
+					this.PostStateToRuntime({
 						currentVolume: res,
 					});
-
-				}
+				},
 			});
 		}
+	}
 
-		_OnDispose() {
-			this.gplayerAPI = null;
+	class ElementHandlerMap {
+		constructor(domHandler) {
+			this._map = new Map();
+			this._dom = domHandler;
+		}
+		Set(element, handler) {
+			let id = element.id ?? "";
+			if (id !== "") {
+				console.error({ error: "Element already have an id", element });
+				throw new Error("Element already initialized!");
+			}
+			id = `gcore_${handler.elementId}`;
+			if (this._map.has(id)) {
+				console.error({ error: "Handler already exists", id });
+				throw new Error("Handler already exists");
+			}
+			element.id = id;
+			this._map.set(id, handler);
+			return handler;
+		}
+
+		Get(element) {
+			const id = element.id;
+			if (!id) {
+				console.error({ error: "No element Id on element", element });
+				throw new Error("No element identifier");
+			}
+			if (!this._map.has(id)) {
+				console.error({ error: "No handler with that id", id });
+				throw new Error("Handler does not exist");
+			}
+			return this._map.get(id);
+		}
+
+		Delete(element) {
+			const handler = this.Get(element);
+			this._map.delete(element.id);
+			return handler;
+		}
+	}
+
+	const HANDLER_CLASS = class GCoreVideoDOMHandler extends self.DOMElementHandler {
+		constructor(iRuntime) {
+			super(iRuntime, DOM_COMPONENT_ID);
+			this._handlers = new ElementHandlerMap();
+			[
+				["play", (elem, e) => this._handlers.Get(elem).OnPlay()],
+				["pause", (elem, e) => this._handlers.Get(elem).OnPause()],
+				["mute", (elem, e) => this._handlers.Get(elem).OnMute()],
+				["unmute", (elem, e) => this._handlers.Get(elem).OnUnmute()],
+				["seek", (elem, e) => this._handlers.Get(elem).OnSeek(e)],
+				["setVolume", (elem, e) => this._handlers.Get(elem).OnSetVolume(e)],
+			].map(([e, h]) => this.AddDOMElementMessageHandler(e, h));
+		}
+
+		CreateElement(elementId, e) {
+			const element = document.createElement("iframe");
+			const handler = new ElementHandler(element, elementId, this);
+			this._handlers.Set(element, handler);
+
+			// The create message includes the state retrieved by GetElementState() in instance.js,
+			// so also update the element state based on those details.
+			handler.UpdateState(e, true);
+
+			console.log("IFrame created:", element);
+
+			return element;
+		}
+
+		DestroyElement(element) {
+			const handler = this._handlers.Delete(element);
+			handler.Destroy();
+			super.DestroyElement(element);
+		}
+
+		UpdateState(elem, e) {
+			// Update the state of the DOM element 'elem' with the state 'e'. The state has been
+			// retrieved by calling GetElementState() in instance.js, which includes all necessary
+			// details to set the correct state of the DOM element.
+			// NOTE: the runtime automatically manages the position, size and visibility of the DOM
+			// element, so this only needs to handle state unique to the element, such as the button
+			// text in this case.
+			this._handlers.Get(elem).UpdateState(e, false);
 		}
 	};
 
