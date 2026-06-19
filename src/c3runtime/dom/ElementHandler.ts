@@ -228,6 +228,13 @@
         // user's mute state.
         mute: this.lastMuted,
         sources: [{ source: manifestUrl, mimeType: this.GetMimeType(manifestUrl) }],
+        playback: {
+          // The player defaults hls.js to non-native subtitle rendering, whose
+          // custom renderer doesn't display our selected track. Force native
+          // text-track rendering so the browser renders cues for the track we
+          // mark "showing" via closedCaptionsTrackId. hlsjsConfig takes priority.
+          hlsjsConfig: { renderTextTracksNatively: true },
+        },
       });
       this.player = player;
       this.RegisterEvents(player);
