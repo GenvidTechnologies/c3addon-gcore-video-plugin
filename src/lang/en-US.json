@@ -7,7 +7,7 @@
 			"genvidtech_gcorevideoplugin": {
 				"name": "GCore Video Plugin",
 				"description": "GCore Video Plugin integration by Genvid Technologies",
-				"help-url": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",
+				"help-url": "https://github.com/genvid-holdings/c3addon-gcore-video-plugin",
 				"properties": {
 					"video-url": {
 						"name": "URL",

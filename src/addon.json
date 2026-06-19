@@ -7,8 +7,8 @@
 	"id": "Genvidtech_GCoreVideoPlugin",
 	"version": "1.0.1.0",
 	"author": "Genvid Technologies, LLC",
-	"website": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",
-	"documentation": "https://bitbucket.org/genvidtech/c3addon-gcore-video-plugin",
+	"website": "https://github.com/genvid-holdings/c3addon-gcore-video-plugin",
+	"documentation": "https://github.com/genvid-holdings/c3addon-gcore-video-plugin",
 	"description": "Gcore Video Player integration by Genvid Technologies.",
 	"editor-scripts": [
 		"plugin.js",
