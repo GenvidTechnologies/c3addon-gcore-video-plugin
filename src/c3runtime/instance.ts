@@ -102,12 +102,15 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 				this._audioState = state.audioState as string;
 			}
 
-			if (state.currentPlaybackTime) {
+			// Use !== undefined (not truthiness) so a legitimate 0 — a muted
+			// volume, a zero duration/playback time — is stored rather than
+			// dropped. Dropping a muted volume of 0 was preventing the player
+			// from ever reaching its "initialized" (ready) state.
+			if (state.currentPlaybackTime !== undefined) {
 				this._currentPlaybackTime = state.currentPlaybackTime as number;
 			}
 
-			if (state.currentVolume) {
-				// Should we differed treatment of volume and mute?
+			if (state.currentVolume !== undefined) {
 				const currentVolume = state.currentVolume as number;
 				if (currentVolume === 0) {
 					this._audioState = "muted";
@@ -117,7 +120,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 				this._currentVolume = currentVolume;
 			}
 
-			if (state.duration) {
+			if (state.duration !== undefined) {
 				this._duration = state.duration as number;
 			}
 

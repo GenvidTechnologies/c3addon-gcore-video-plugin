@@ -254,6 +254,10 @@
       player.on(PlayerEvent.Play, () => {
         console.log("[video player]", "Playing");
         this.PostStateToRuntime({ playerState: "playing" });
+        // Play fires reliably; report duration/volume here so the runtime can
+        // reach its "initialized" state even if Ready/VolumeUpdate don't fire
+        // (e.g. VolumeUpdate is only emitted on a change, not for initial mute).
+        this.PostPlaybackInfo(player);
       });
 
       player.on(PlayerEvent.Pause, () => {
@@ -262,15 +266,23 @@
       });
 
       player.on(PlayerEvent.TimeUpdate, (e) => {
-        const current = (e as { current?: number }).current;
+        const { current, total } = e as { current?: number; total?: number };
+        const state: JSONObject = {};
         if (typeof current === "number") {
-          this.PostStateToRuntime({ currentPlaybackTime: current });
+          state.currentPlaybackTime = current;
         }
+        // `total` is the stream duration — a reliable source even when the
+        // Ready event's getDuration() isn't yet populated.
+        if (typeof total === "number" && !isNaN(total)) {
+          state.duration = total;
+        }
+        this.PostStateToRuntime(state);
       });
 
       player.on(PlayerEvent.VolumeUpdate, () => {
         this.PostStateToRuntime({
-          currentVolume: player.isMuted() ? 0 : player.getVolume(),
+          currentVolume: player.getVolume(),
+          audioState: player.isMuted() ? "muted" : "unmuted",
         });
       });
 
@@ -281,13 +293,25 @@
 
       player.on(PlayerEvent.Ready, () => {
         console.log("[video player]", "Ready");
-        // Methods are synchronous in the new API, so report duration and volume
-        // directly; the runtime marks the player ready once both are known.
-        this.PostStateToRuntime({
-          duration: player.getDuration(),
-          currentVolume: player.isMuted() ? 0 : player.getVolume(),
-        });
+        this.PostPlaybackInfo(player);
       });
+    }
+
+    // Report duration, volume and audio (mute) state together. Methods are
+    // synchronous in the new API. getVolume() returns the actual level (0 when
+    // muted), and mute is reported separately via audioState so the runtime can
+    // distinguish "muted" from "volume happens to be 0".
+    PostPlaybackInfo(player: GCorePlayer) {
+      const state: JSONObject = {
+        currentVolume: player.getVolume(),
+        audioState: player.isMuted() ? "muted" : "unmuted",
+      };
+      const duration = player.getDuration();
+      // Accept 0 and Infinity (live), but never NaN (would fail duration > -1).
+      if (typeof duration === "number" && !isNaN(duration)) {
+        state.duration = duration;
+      }
+      this.PostStateToRuntime(state);
     }
 
     DestroyPlayer() {
