@@ -18,8 +18,19 @@
     mute(): void;
     unmute(): void;
     isMuted(): boolean;
+    resize(size: { width: number; height: number }): void;
     on(event: string, handler: (e: unknown) => void): void;
     destroy(): void;
+    // Closed-caption / subtitle tracks (Clappr-style). Track entries vary by
+    // playback backend; match defensively across whatever fields are present.
+    closedCaptionsTracks: Array<{
+      id: number;
+      name?: string;
+      label?: string;
+      lang?: string;
+      language?: string;
+    }>;
+    closedCaptionsTrackId: number;
   }
 
   interface GCorePlayerConstructor {
@@ -62,6 +73,11 @@
         if (mod["MediaControl"]) {
           Player.registerPlugin(mod["MediaControl"]);
         }
+        // ClosedCaptions enables subtitle rendering/selection from the in-manifest
+        // subtitle tracks (GCore HLS exposes them as EXT-X-MEDIA SUBTITLES).
+        if (mod["ClosedCaptions"]) {
+          Player.registerPlugin(mod["ClosedCaptions"]);
+        }
         return Player;
       });
     }
@@ -74,6 +90,8 @@
     handler: IDOMElementHandler;
     player: GCorePlayer | null;
     currentUrl: string;
+    subtitleLang: string;
+    resizeObserver: ResizeObserver | null;
     controller: AbortController;
 
     constructor(
@@ -86,6 +104,8 @@
       this.handler = domHandler;
       this.player = null;
       this.currentUrl = "";
+      this.subtitleLang = "off";
+      this.resizeObserver = null;
       this.controller = new AbortController();
 
       this.Setup();
@@ -93,6 +113,14 @@
 
     Setup() {
       const { signal } = this.controller;
+
+      // Eagerly load the player module so the runtime can report the API as
+      // initialized (loaded) even before a video URL is set.
+      loadGCorePlayer()
+        .then(() => this.PostStateToRuntime({ apiInitialized: true }))
+        .catch((err) =>
+          console.error("[video player] Failed to load GCore player", err)
+        );
 
       // Keep player interactions inside the element so they don't leak into the
       // Construct game's input handling.
@@ -128,17 +156,13 @@
     }
 
     UpdateState(e: JSONObject) {
-      let url = (e["url"] ?? "") as string;
-      const language = (e["subtitles"] ?? "off") as string;
-      const noLowLatency = e["noLowLatency"] || false;
-      if (url !== "") {
-        if (language !== "off") {
-          url += "?sub_lang=" + language;
-        }
-        if (noLowLatency) {
-          url += (url.includes("?") ? "&" : "?") + "no_low_latency";
-        }
-      }
+      const url = (e["url"] ?? "") as string;
+      // Subtitles are selected via the player's closed-caption tracks (not a URL
+      // query param anymore — see ApplySubtitles).
+      this.subtitleLang = (e["subtitles"] ?? "off") as string;
+      // noLowLatency no longer maps to a URL param under the v2 player; proper
+      // low-latency config is a follow-up (GitHub issue #1).
+
       if (this.currentUrl !== url) {
         this.currentUrl = url;
         if (url !== "") {
@@ -150,6 +174,10 @@
           this.DestroyPlayer();
           this.PostStateToRuntime({ playerState: "offline" });
         }
+      } else {
+        // URL unchanged (e.g. only the subtitle language changed) — apply it to
+        // the existing player without rebuilding it.
+        this.ApplySubtitles();
       }
     }
 
@@ -196,7 +224,58 @@
       this.player = player;
       this.RegisterEvents(player);
       player.attachTo(this.element);
+      // Size the player to the Construct-managed container, and keep it in sync
+      // when the instance is resized (Construct resizes our <div>, but the
+      // player won't follow on its own).
+      this.ResizePlayer();
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = new ResizeObserver(() => this.ResizePlayer());
+      this.resizeObserver.observe(this.element);
       console.log("Player created", player, "manifest:", manifestUrl);
+    }
+
+    ResizePlayer() {
+      if (!this.player) {
+        return;
+      }
+      const width = this.element.clientWidth;
+      const height = this.element.clientHeight;
+      if (width > 0 && height > 0) {
+        this.player.resize({ width, height });
+      }
+    }
+
+    // Select the closed-caption track matching the requested language, or
+    // disable captions for "off"/unknown. Track entries differ by backend, so
+    // match across language code and human-readable name.
+    ApplySubtitles() {
+      const player = this.player;
+      if (!player) {
+        return;
+      }
+      const lang = (this.subtitleLang || "off").toLowerCase();
+      if (lang === "off") {
+        player.closedCaptionsTrackId = -1;
+        return;
+      }
+      const tracks = player.closedCaptionsTracks || [];
+      const match = tracks.find((t) => {
+        const fields = [t.lang, t.language, t.name, t.label]
+          .filter(Boolean)
+          .map((s) => String(s).toLowerCase());
+        return fields.some((f) => f === lang || f.startsWith(lang));
+      });
+      if (match) {
+        player.closedCaptionsTrackId = match.id;
+      } else {
+        console.warn(
+          "[video player] No subtitle track for",
+          lang,
+          "available:",
+          tracks
+        );
+        player.closedCaptionsTrackId = -1;
+      }
     }
 
     // The v2 player needs a direct HLS manifest URL, but projects store GCore
@@ -294,6 +373,8 @@
       player.on(PlayerEvent.Ready, () => {
         console.log("[video player]", "Ready");
         this.PostPlaybackInfo(player);
+        // Subtitle tracks are known once the manifest is parsed (by Ready).
+        this.ApplySubtitles();
       });
     }
 
@@ -315,6 +396,8 @@
     }
 
     DestroyPlayer() {
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
       if (this.player) {
         try {
           this.player.destroy();

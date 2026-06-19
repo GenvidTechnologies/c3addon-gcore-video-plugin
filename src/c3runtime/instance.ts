@@ -66,9 +66,11 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		};
 	}
 
-	// Initialize state when setting up or disposing player
+	// Reset per-video state when (re)loading or unloading a video. Does NOT clear
+	// _isInitialized: that tracks whether the player API has loaded, which
+	// persists across video changes.
 	_InitializeState() {
-		this._isInitialized = false;
+		this._isReady = false;
 
 		this._currentPlaybackTime = 0;
 		this._currentVolume = -1;
@@ -86,6 +88,12 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	_OnStateChanged(e: JSONObject) {
 		if (e.state) {
 			const state = e.state as JSONObject;
+
+			// The player API (module) has finished loading.
+			if (state.apiInitialized) {
+				this._isInitialized = true;
+			}
+
 			if (state.playerState) {
 				switch (state.playerState) {
 					case "loading":
@@ -124,9 +132,10 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 				this._duration = state.duration as number;
 			}
 
-			// Finally mark the player as ready when current volume and duration values have been retrieved
+			// Mark the video as ready (loaded and playable) once its volume and
+			// duration are known.
 			if (!this._isReady && this._currentVolume > -1 && this._duration > -1) {
-				this._isInitialized = true;
+				this._isReady = true;
 			}
 		}
 

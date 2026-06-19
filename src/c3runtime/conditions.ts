@@ -11,10 +11,10 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 		return true;
 	},
 	IsPlaying(this: SDKInstanceClass) {
-		return this._isInitialized && this._playerState === "playing";
+		return this._isReady && this._playerState === "playing";
 	},
 	IsPaused(this: SDKInstanceClass) {
-		return this._isInitialized && this._playerState === "paused";
+		return this._isReady && this._playerState === "paused";
 	},
 	IsLoading(this: SDKInstanceClass) {
 		return this._playerState === "loading";
@@ -23,10 +23,10 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 		return this._playerState === "offline";
 	},
 	IsReady(this: SDKInstanceClass) {
-		return this._isInitialized;
+		return this._isReady;
 	},
 	IsEnded(this: SDKInstanceClass) {
-		return this._isInitialized && this._playerState === "ended";
+		return this._isReady && this._playerState === "ended";
 	},
 	IsMuted(this: SDKInstanceClass) {
 		return this._audioState === "muted";
