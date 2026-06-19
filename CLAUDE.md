@@ -22,6 +22,15 @@ then `dist/` is zipped into a `.c3addon` package.
 
 There is no automated test suite.
 
+## Architecture
+
+- `src/plugin.ts` is **editor-side** (runs in the Construct 3 editor / at export,
+  not in the game); only `src/c3runtime/**` runs in the game.
+- All GCore player-API coupling is isolated to `src/c3runtime/dom/ElementHandler.ts`;
+  the runtime side talks to it through a generic message bridge.
+- See [`docs/architecture.md`](docs/architecture.md) and
+  [`docs/gcore-player-api.md`](docs/gcore-player-api.md).
+
 ## Commit Format
 
 `<type> - <description>`, where `<type>` is one of `feat`, `fix`, or `chore`.
