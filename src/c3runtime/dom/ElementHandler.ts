@@ -21,26 +21,29 @@
     resize(size: { width: number; height: number }): void;
     on(event: string, handler: (e: unknown) => void): void;
     destroy(): void;
-    // Closed-caption / subtitle tracks. The HLS backend returns entries shaped
-    // { id, name, track: { id, label, language } }; match defensively.
-    closedCaptionsTracks: Array<{
+    // The GCore Player is a thin wrapper; the underlying Clappr player — with the
+    // core, active playback and subtitle/track API — lives at `.player`. The
+    // wrapper itself exposes no caption API, so subtitles must go through here.
+    player?: {
+      core?: {
+        activePlayback?: ClapprPlayback;
+      };
+    };
+  }
+
+  // The active playback (e.g. the HLS backend). Subtitle tracks are loaded via
+  // setTextTrack(id) — which sets hls.subtitleTrack and fetches the VTT — not via
+  // closedCaptionsTrackId, which is a no-op on the HLS playback.
+  interface ClapprPlayback {
+    name?: string;
+    setTextTrack?: (id: number) => void;
+    closedCaptionsTrackId?: number;
+    closedCaptionsTracks?: Array<{
       id: number;
       name?: string;
       label?: string;
-      lang?: string;
-      language?: string;
       track?: { id?: number; label?: string; language?: string };
     }>;
-    closedCaptionsTrackId: number;
-    // Reaching into the active playback is required for subtitles: the public
-    // closedCaptionsTrackId is a no-op on the HLS playback (it mutates a plain
-    // object), whereas setTextTrack() sets hls.subtitleTrack and loads the VTT.
-    core?: {
-      activePlayback?: {
-        name?: string;
-        setTextTrack?: (id: number) => void;
-      };
-    };
   }
 
   interface GCorePlayerConstructor {
@@ -101,6 +104,10 @@
     player: GCorePlayer | null;
     currentUrl: string;
     subtitleLang: string;
+    // hls.js resets subtitle selections made during startup, so we defer
+    // applying subtitles until playback has advanced ~2s past its start.
+    playbackStable: boolean;
+    playbackBaseline: number;
     // Audio is muted only for the very first autoplay (browser policy); after
     // that we carry the mute/volume state across video changes.
     lastMuted: boolean;
@@ -119,6 +126,8 @@
       this.player = null;
       this.currentUrl = "";
       this.subtitleLang = "off";
+      this.playbackStable = false;
+      this.playbackBaseline = -1;
       this.lastMuted = true;
       this.lastVolume = -1;
       this.resizeObserver = null;
@@ -232,6 +241,10 @@
 
       this.DestroyPlayer();
 
+      // Reset playback-stability tracking for the new video.
+      this.playbackStable = false;
+      this.playbackBaseline = -1;
+
       const player = new Player({
         autoPlay: true,
         // Only the first autoplay needs forced mute; subsequent loads keep the
@@ -270,50 +283,51 @@
       }
     }
 
-    // Select the subtitle track matching the requested language, or disable for
-    // "off"/unknown. Resolve to a track id, then load it via the active
-    // playback's setTextTrack() — the public closedCaptionsTrackId getter/setter
-    // is a no-op on the HLS backend and never fetches the subtitle VTT.
+    // Select the subtitle track matching the requested language ("off"/unknown
+    // disables). Tracks live on the underlying Clappr playback (player.player.
+    // core.activePlayback) and are loaded via setTextTrack(id), which sets
+    // hls.subtitleTrack and fetches the VTT.
+    //
+    // Selecting a language is deferred until playback is stable (see the
+    // TimeUpdate handler): hls.js discards a subtitle selection made during
+    // startup. Disabling ("off") works at any time. A language change after
+    // playback is already stable applies immediately.
     ApplySubtitles() {
-      const player = this.player;
-      if (!player) {
+      const playback = this.player?.player?.core?.activePlayback;
+      if (!playback) {
         return;
       }
       const lang = (this.subtitleLang || "off").toLowerCase();
-      let trackId = -1;
-      if (lang !== "off") {
-        const tracks = player.closedCaptionsTracks || [];
-        const match = tracks.find((t) => {
-          const fields = [
-            t.lang,
-            t.language,
-            t.track?.language,
-            t.name,
-            t.label,
-            t.track?.label,
-          ]
-            .filter(Boolean)
-            .map((s) => String(s).toLowerCase());
-          return fields.some((f) => f === lang || f.startsWith(lang));
-        });
-        if (match) {
-          trackId = match.id;
-        } else {
-          console.warn(
-            "[video player] No subtitle track for",
-            lang,
-            "available:",
-            tracks
-          );
-        }
+
+      if (lang === "off") {
+        this.SelectTextTrack(playback, -1);
+        return;
+      }
+      if (!this.playbackStable) {
+        // The TimeUpdate handler re-invokes ApplySubtitles once stable.
+        return;
       }
 
-      const playback = player.core?.activePlayback;
-      if (playback && typeof playback.setTextTrack === "function") {
+      const tracks = playback.closedCaptionsTracks || [];
+      const match = tracks.find((t) => {
+        const fields = [t.track?.language, t.name, t.label, t.track?.label]
+          .filter(Boolean)
+          .map((s) => String(s).toLowerCase());
+        return fields.some((f) => f === lang || f.startsWith(lang));
+      });
+      if (!match) {
+        console.warn("[video player] No subtitle track for", lang, "available:", tracks);
+        this.SelectTextTrack(playback, -1);
+        return;
+      }
+      this.SelectTextTrack(playback, match.id);
+    }
+
+    SelectTextTrack(playback: ClapprPlayback, trackId: number) {
+      if (typeof playback.setTextTrack === "function") {
         playback.setTextTrack(trackId);
-      } else {
-        // Fallback for backends where closedCaptionsTrackId is honoured.
-        player.closedCaptionsTrackId = trackId;
+      } else if (playback.closedCaptionsTrackId !== undefined) {
+        playback.closedCaptionsTrackId = trackId;
       }
     }
 
@@ -388,6 +402,15 @@
         const state: JSONObject = {};
         if (typeof current === "number") {
           state.currentPlaybackTime = current;
+          // Once playback has advanced ~2s past its start, hls.js has settled and
+          // a subtitle selection will stick. Apply any pending subtitle then.
+          if (this.playbackBaseline < 0) {
+            this.playbackBaseline = current;
+          }
+          if (!this.playbackStable && current - this.playbackBaseline >= 2) {
+            this.playbackStable = true;
+            this.ApplySubtitles();
+          }
         }
         // `total` is the stream duration — a reliable source even when the
         // Ready event's getDuration() isn't yet populated.
