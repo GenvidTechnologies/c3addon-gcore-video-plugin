@@ -31,14 +31,24 @@ The player attaches to a **container DOM node** (a `<div>`) and injects its own
 ```ts
 Player.registerPlugin(SourceController) // manifest/transport selection
 Player.registerPlugin(MediaControl)     // documented minimal companion plugin
+Player.registerPlugin(ClosedCaptions)   // subtitle/caption support
 
 const player = new Player({
   autoPlay: true,
   mute: true, // muted autoplay avoids browser autoplay blocks; game unmutes
   sources: [{ source: url, mimeType }],
+  // Force native text-track rendering so the browser renders subtitle cues (the
+  // player defaults this to false → a custom renderer that doesn't display them).
+  playback: { hlsjsConfig: { renderTextTracksNatively: true } },
 })
 player.attachTo(containerDiv)
 ```
+
+> **`Player` is a thin wrapper.** It exposes only the high-level methods below
+> (`play`, `pause`, `seek`, volume, `resize`, `destroy`, `on`) — **no track or
+> caption API**. The underlying Clappr player, with `core`, `core.activePlayback`,
+> subtitle tracks and `setTextTrack`, lives at **`player.player`**. Subtitles need
+> that inner object (see below).
 
 `mimeType` is derived from the URL path: `.mpd` → `application/dash+xml`,
 otherwise `application/x-mpegurl` (HLS). Progressive/direct-file sources are not
@@ -81,6 +91,30 @@ host is the client-id subdomain. Rules:
 `getDuration()`, `mute()`, `unmute()`, `isMuted()`, `destroy()`. Unlike the old
 API these return values directly (no callbacks).
 
+### Subtitles (the tricky one)
+
+GCore HLS manifests carry the subtitle renditions in-manifest
+(`#EXT-X-MEDIA:TYPE=SUBTITLES,…,LANGUAGE="en"`). Getting them to render took
+three non-obvious pieces — all encoded in `ElementHandler.ApplySubtitles()` and
+demonstrated by [`../test/player-test.html`](../test/player-test.html):
+
+1. **Reach the real playback.** Tracks and selection live on the inner Clappr
+   player: `player.player.core.activePlayback`. It exposes `closedCaptionsTracks`
+   (`[{ id, name, track: { language } }]`) and `setTextTrack(id)`. The wrapper's
+   `player.closedCaptionsTrackId` is a **no-op** on the HLS backend.
+2. **Load via `setTextTrack(id)`.** It sets `hls.subtitleTrack`, which fetches the
+   subtitle playlist + `.vtt` segments. (`-1` disables.) Combined with
+   `renderTextTracksNatively: true`, the browser renders the cues.
+3. **Timing.** hls.js **discards a subtitle selection made during startup**, so
+   applying on `ready` leaves the native track disabled with no cues. The plugin
+   defers the language selection until a `TimeUpdate` shows playback has advanced
+   ~2s (then it sticks reliably). Disabling and later language changes apply
+   immediately.
+
+The plugin maps the requested language code to a track by matching against the
+track's `language` then `name` (so `en` → "English"). Non-Latin display names
+(`ja`, `zh`) rely on the `language` field matching.
+
 ## Why not keep the iframe + `gplayerAPI` approach?
 
 The pre-v2 plugin used `gplayerAPI.min.js` (the `globalThis.GcorePlayer.gplayerAPI`
@@ -114,11 +148,14 @@ control path is dead and the DOM-native v2 SDK is the working approach. If GCore
 fixes it, revisit — the iframe path preserves their server-side ads/stats/CDN/auth
 provisioning that the DOM-native path does not.
 
-## Runtime-verification items (confirm in a C3 preview)
+## Status & follow-ups
 
-- `TimeUpdate` payload shape is `{ current, total }`; `Error` payload exposes `.message`.
-- `setVolume` expects a `0..1` range (the ACE value is passed through as-is).
-- **Subtitles / low latency are not wired into v2.** The legacy `?sub_lang=` /
-  `no_low_latency` query params are stripped during manifest resolution and have
-  no effect; proper Subtitles-plugin + low-latency config is tracked as follow-up
-  (GitHub issue #1).
+Verified working in a Construct 3 preview: playback, embed-URL → manifest
+resolution, container sizing/resize, ready-state, mute/volume persistence across
+videos, and subtitle selection/rendering.
+
+- **Low latency is not wired into v2.** The legacy `no_low_latency` URL query
+  param is dropped during manifest resolution; proper low-latency config is a
+  follow-up (GitHub issue #1).
+- `setVolume`/`getVolume` round-trip in the player's own units (the ACE value is
+  passed through as-is) — confirm the game's volume range matches if it matters.
