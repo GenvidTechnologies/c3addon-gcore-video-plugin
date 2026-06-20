@@ -31,6 +31,18 @@ There is no automated test suite.
 - See [`docs/architecture.md`](docs/architecture.md) and
   [`docs/gcore-player-api.md`](docs/gcore-player-api.md).
 
+## Debugging the player
+
+This plugin wraps a complex third-party browser player (`@gcorevideo/player`, a
+~3 MB Clappr/hls.js bundle). For anything player-internal — subtitles, sizing,
+playback state, audio, timing — **debug empirically in a real browser** with
+[`test/player-test.html`](test/player-test.html) (drive it headlessly via the
+Playwright MCP, or `npx http-server` + a browser). Reverse-engineering the
+minified bundle by reading it gives repeatedly-wrong answers; running it settles
+in minutes what static analysis gets wrong over hours. Note the `Player` is a
+thin wrapper — the real Clappr player (core, playback, tracks) is at
+`player.player`. See `docs/gcore-player-api.md` for the gotchas.
+
 ## Commit Format
 
 `<type> - <description>`, where `<type>` is one of `feat`, `fix`, or `chore`.
