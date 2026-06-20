@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GCore v2 player — manual test harness</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1rem; }
+    #player { width: 640px; height: 360px; background: #000; position: relative; }
+    #log { white-space: pre-wrap; background: #111; color: #5f5; padding: .5rem;
+           height: 240px; overflow: auto; font-family: monospace; font-size: 12px; }
+    button { margin: 2px; }
+    .row { margin: .5rem 0; }
+    input[type=text] { width: 60ch; }
+  </style>
+</head>
+<body>
+  <h1>GCore v2 player — manual test harness</h1>
+  <p>Standalone test of <code>@gcorevideo/player</code> outside Construct 3. See
+     <a href="README.md">README.md</a>. Open the console + Network tab. Enter a
+     GCore embed URL <em>or</em> a direct <code>master.m3u8</code>, click
+     <b>Load</b>, then pick a subtitle language.</p>
+
+  <div class="row">
+    <input id="url" type="text"
+      value="https://421804.gvideo.io/videos/421804_aRXqc20sxTTLovVV/master.m3u8" />
+    <button id="load">Load</button>
+  </div>
+
+  <div id="player"></div>
+
+  <div class="row">
+    <b>Subtitles:</b> <span id="controls">(load a video first)</span>
+    <button id="off">OFF</button>
+  </div>
+
+  <div class="row">
+    <button id="dumpcc">Dump subtitle tracks</button>
+    <button id="dumpvideo">Dump &lt;video&gt;.textTracks (+cues)</button>
+  </div>
+
+  <pre id="log"></pre>
+
+  <script>
+    "use strict";
+    // The browser build is an ES module with named exports and no global; it is
+    // loaded via dynamic import(). (Serve this page over http:// — module import
+    // is blocked from file:// in Chromium.)
+    const PLAYER_URL = "https://player.gvideo.co/v2/assets/latest/index.js";
+    const logEl = document.getElementById("log");
+    let player = null;
+
+    function log(...args) {
+      logEl.textContent += args.map((a) => (typeof a === "string" ? a : (() => { try { return JSON.stringify(a); } catch { return String(a); } })())).join(" ") + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(...args);
+    }
+
+    // KEY: the GCore Player is a thin wrapper with no caption API. The Clappr
+    // player (core, active playback, subtitle tracks, setTextTrack) is at
+    // `.player`. Subtitles are loaded via the active playback's setTextTrack(id),
+    // NOT player.closedCaptionsTrackId (a no-op on the HLS backend).
+    function activePlayback() {
+      return player && player.player && player.player.core && player.player.core.activePlayback;
+    }
+    function ccTracks() {
+      const pb = activePlayback();
+      try { return (pb && pb.closedCaptionsTracks) || []; } catch (e) { log("ccTracks err:", e.message); return []; }
+    }
+
+    function selectTrack(id) {
+      const pb = activePlayback();
+      if (!pb) { log("no active playback"); return; }
+      log("setTextTrack(", id, ") on playback:", pb.name);
+      try { pb.setTextTrack(id); } catch (e) { log("setTextTrack err:", e.message); }
+      setTimeout(dumpVideoTextTracks, 1200);
+    }
+
+    function dumpCc() { log("subtitle tracks:", ccTracks().map((t) => ({ id: t.id, name: t.name, lang: t.track && t.track.language }))); }
+
+    function dumpVideoTextTracks() {
+      const v = document.querySelector("#player video");
+      if (!v) { log("no <video> element"); return; }
+      log("<video>.textTracks.length:", v.textTracks.length);
+      for (const t of v.textTracks) log(`  ${t.kind} label=${t.label} lang=${t.language} mode=${t.mode} cues=${t.cues ? t.cues.length : "null"}`);
+    }
+
+    document.getElementById("dumpcc").onclick = dumpCc;
+    document.getElementById("dumpvideo").onclick = dumpVideoTextTracks;
+    document.getElementById("off").onclick = () => selectTrack(-1);
+
+    document.getElementById("load").onclick = async () => {
+      logEl.textContent = "";
+      const url = document.getElementById("url").value.trim();
+      log("importing", PLAYER_URL, "...");
+      let mod;
+      try { mod = await import(PLAYER_URL); }
+      catch (e) { log("MODULE IMPORT FAILED:", e.message, "\n(serve this page over http://, not file://)"); return; }
+      const { Player, MediaControl, SourceController, ClosedCaptions } = mod;
+      [SourceController, MediaControl, ClosedCaptions].forEach((p) => { if (p) try { Player.registerPlugin(p); } catch (e) { log("registerPlugin err:", e.message); } });
+
+      if (player) { try { player.destroy(); } catch (e) { /* ignore */ } }
+      player = new Player({
+        autoPlay: true,
+        mute: true,
+        sources: [{ source: url, mimeType: "application/x-mpegurl" }],
+        playback: { hlsjsConfig: { renderTextTracksNatively: true } },
+      });
+      window.player = player; // for console poking
+
+      player.on("error", (e) => log("ERROR:", e && e.message ? e.message : e));
+      player.on("ready", () => {
+        log("=== READY === (subtitle tracks appear ~0.2s later; selection sticks once playback is ~2s in)");
+        // Build a button per subtitle track shortly after ready.
+        setTimeout(() => {
+          const c = document.getElementById("controls");
+          c.innerHTML = "";
+          const tracks = ccTracks();
+          if (!tracks.length) { c.textContent = "(no subtitle tracks in this manifest)"; return; }
+          tracks.forEach((t) => {
+            const b = document.createElement("button");
+            b.textContent = `${t.name || (t.track && t.track.language) || t.id}`;
+            b.onclick = () => selectTrack(t.id);
+            c.appendChild(b);
+          });
+          log("subtitle tracks:", tracks.length);
+        }, 600);
+      });
+      player.attachTo(document.getElementById("player"));
+      log("attached; autoplay starting...");
+    };
+  </script>
+</body>
+</html>
