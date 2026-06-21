@@ -24,3 +24,14 @@ npm run all:{platform}
 ```
 
 where platform is either `windows` or `posix`.
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): runs lint + build on every PR and on pushes to `main`. The built `.c3addon` is attached as a downloadable workflow artifact on each run.
+- **Releases** (`.github/workflows/release.yml`): push a digit-first version tag to cut a release. The workflow builds and publishes `Genvidtech_GCoreVideoPlugin.c3addon` to the repo's GitHub Releases page.
+
+```bash
+git tag 1.1.0.0 && git push origin 1.1.0.0
+```
+
+To get a released build, download the `.c3addon` asset from the [GitHub Releases](../../releases) page.
