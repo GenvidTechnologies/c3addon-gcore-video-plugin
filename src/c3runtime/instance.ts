@@ -194,6 +194,10 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._postToDOMElement("setQuality", { level });
 	}
 
+	_Resize() {
+		this._postToDOMElement("resize", null);
+	}
+
 	_GetState() {
 		return {
 			playerState: this._playerState,

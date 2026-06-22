@@ -137,6 +137,10 @@
 						"type": "boolean"
 					}
 				]
+			},
+			{
+				"id": "resize",
+				"scriptName": "Resize"
 			}
 		],
 		"expressions": [

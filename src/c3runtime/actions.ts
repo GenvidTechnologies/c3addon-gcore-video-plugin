@@ -32,5 +32,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	},
 	SetEnableChrome(this:SDKInstanceClass, enable: boolean) {
 		this._SetEnableChrome(enable);
+	},
+	Resize(this: SDKInstanceClass) {
+		this._Resize();
 	}
 };

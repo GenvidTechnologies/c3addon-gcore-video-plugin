@@ -182,6 +182,11 @@
 								"desc": "True to show the built-in control bar; false to hide it."
 							}
 						}
+					},
+					"resize": {
+						"list-name": "Resize",
+						"display-text": "Resize player to container",
+						"description": "Re-sync the player dimensions to its container. The player is automatically resized via ResizeObserver; use this action when an immediate manual re-sync is needed."
 					}
 				},
 				"expressions": {

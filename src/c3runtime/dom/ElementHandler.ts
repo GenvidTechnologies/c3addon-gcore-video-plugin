@@ -655,6 +655,11 @@
       this.lastReportedLevel = currentQuality;
       this.PostStateToRuntime({ currentQuality });
     }
+
+    OnResize() {
+      console.log("[video player] Resize requested");
+      this.ResizePlayer();
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
