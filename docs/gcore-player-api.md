@@ -112,16 +112,19 @@ plugin's `err.message ?? String(err)` fallback is correct.
 `getDuration()`, `mute()`, `unmute()`, `isMuted()`, `destroy()`. Unlike the old
 API these return values directly (no callbacks).
 
-**Volume units — confirmed 0..100 range, latent bug in plugin (2026-06-22):**
+**Volume units — A3, confirmed 0..100 range, wrapped at ElementHandler boundary
+(resolved in 2.0.0.0):**
 `setVolume` and `getVolume` operate in **percent (0..100)**, not 0..1.
 Empirically, `setVolume(0.5)` set the underlying `<video>.volume` to `0.005`
 (the player divides the argument by 100), while `getVolume()` returned `0.5`
-(the wrapper echoes the as-set value, not the media-element level). A game
-calling `SetVolume(0.5)` expecting 50% volume actually gets 0.5% (near silence);
-half volume requires `SetVolume(50)`. **The plugin currently passes the ACE
-value through unchanged** — so it inherits this range semantics. Whether the
-ACE parameter should be 0..100 or whether the plugin should normalize is a
-discrepancy to resolve before shipping a volume feature (see follow-ups).
+(the wrapper echoes the as-set value, not the media-element level).
+
+As of v2.0.0.0 the plugin wraps this at the `ElementHandler` boundary: the
+`SetVolume` / `GetCurrentVolume` ACEs present a **0..1** range to the game.
+`ElementHandler` multiplies by 100 before `setVolume()` calls and divides by
+100 after `getVolume()` calls; `lastVolume` is stored in 0..1 units. This is a
+behavior change from v1 (which passed the value through unchanged). Games
+targeting v1 that used the 0..100 range must update their `SetVolume` calls.
 
 ### Quality levels (confirmed 2026-06-22)
 
@@ -131,9 +134,39 @@ discrepancy to resolve before shipping a volume feature (see follow-ups).
 readable/writable; `-1` means ABR/auto.
 
 **No quality-change event exists at the wrapper level.** The `PlayerEvent` enum
-has no quality or level entry (confirmed above). Quality state can only be
-polled (e.g. on `Ready` or `TimeUpdate`); an `OnQualityChanged` trigger is not
-feasible without reaching into the Clappr core directly.
+has no quality or level entry (confirmed above). Quality state is polled on each
+`TimeUpdate` (and seeded on `Ready`), posting `currentQuality` to the runtime
+only when the level index actually changes (suppressed otherwise). Exposed via
+the `SetQuality` / `GetCurrentQuality` / `GetQualityCount` ACEs. An
+`OnQualityChanged` trigger is not feasible without reaching into Clappr core
+directly.
+
+### Chrome (control bar)
+
+The built-in control bar is managed by the `media_control` Clappr plugin. It
+exposes `enable()` / `disable()` methods that toggle the UI without tearing
+down and rebuilding the player. The plugin retrieves it via
+`core.getPlugin('media_control')` (falling back to scanning `core.plugins`).
+
+This is wired to an `enableChrome` property (default ON) and the
+`SetEnableChrome` / `GetEnableChrome` ACEs. A chrome change while a video is
+playing takes effect immediately (live toggle via `ApplyChrome()`); a chrome
+change when no video is loaded is applied on the next `Ready` event after
+construction.
+
+### Multi-source failover
+
+Multiple entries in the Player `sources` array trigger automatic failover via
+the `SourceController` plugin (registered at module load). The plugin resolves
+all URLs concurrently (primary failure is fatal; fallback resolution failures
+are swallowed with a warning). Exposed via the `SetFallbackURLs` ACE. A change
+to the fallback-URL list triggers a player rebuild (handled by `NeedsRebuild`).
+
+### Resize
+
+The player is resized automatically by a `ResizeObserver` on the container
+element. An explicit `Resize` action is also exposed as an ACE for cases where
+the game needs to trigger a resize programmatically.
 
 ### Subtitles (the tricky one)
 
@@ -228,28 +261,50 @@ real GCore VOD stream (master.m3u8):
   DvrControls, AudioTracks, AudioSelector, SeekTime, Thumbnails,
   PictureInPicture, PlaybackRate, Poster, Logo, Share, ContextMenu,
   ClickToPause, and more).
+- Volume wrapping (A3): `setVolume(0.5)` without wrapping → `<video>.volume`
+  0.005 (0.5%). With the 0..1 → 0..100 conversion in place, `SetVolume(0.5)` →
+  `player.setVolume(50)` → `<video>.volume` 0.5 — correct.
+- Quality polling: `activePlayback.currentLevel` and `activePlayback.levels`
+  accessible; initial level reported on `Ready`, change-suppressed polling on
+  `TimeUpdate` working.
+- Chrome live-toggle: `core.getPlugin('media_control')` returns the plugin;
+  `enable()`/`disable()` take effect without a player rebuild.
 
-### Known discrepancies / latent bugs
+### Known bugs / caveats
 
-- **Volume range (0..100, not 0..1):** `setVolume`/`getVolume` use percent
-  units (0..100). The plugin passes the ACE value through unchanged, so a game
-  calling `SetVolume(0.5)` gets 0.5% volume, not 50%. Needs resolution before
-  shipping a volume feature — see the Control methods section above.
 - **Error event fires repeatedly:** `OnError` can re-trigger many times for a
   single bad stream URL (one per hls.js retry).
 
-### Pending verification (needs live / DVR / LL stream)
+### Implemented but pending live-stream / asset verification
 
-- **Low latency:** `playback.playbackType` and `playback.priorityTransport` are
-  accepted Player config keys; `activePlayback._playbackType` is a private field.
-  Default transport on VOD is `hls`. The full effect of enabling/disabling
-  low-latency mode requires a live LL stream to confirm (relevant for the
-  `noLowLatency` toggle, GitHub issue #1).
-- **DVR window:** `activePlayback.dvrEnabled` is a public boolean getter (false
-  on VOD). There is no public seekable-range accessor (`seekableRange`,
-  `getSeekable`, `seekable`, `getSeekableRange`, `dvrInUse` all absent). DVR
-  window data lives in private fields (`_playableRegionStartTime`,
-  `_playableRegionDuration`, `_playbackType`, `_playlistType`,
-  `_extrapolatedWindowNumSegments`, `_minDvrSize`) — reading them would be
-  fragile. DVR support needs verification against a real live/DVR stream before
-  relying on it.
+The following features have code shipped in v2.0.0.0 but have not yet been
+verified against the specific stream types they target. Code comments in
+`ElementHandler.ts` reference this section (A-numbers below).
+
+**A5 — Low latency (`noLowLatency`):**
+Wired to `playback.hlsjsConfig.lowLatencyMode = false` when `noLowLatency` is
+`true` (set only when requested so the player default of `true` is preserved for
+normal streams). The GCore `playbackType` / `priorityTransport` config keys were
+evaluated but could not be confirmed to change behavior on a VOD stream and were
+not used. The actual effect of disabling low-latency mode is **unverified against
+a live low-latency stream**.
+
+**A6 — DVR window (`enableDvr`, `GetSeekableStart` / `GetSeekableEnd`):**
+`enableDvr` sets `config.playbackType = "dvr"` at construction time, which
+enables the player's DVR seek window. `IsDVR` reads `activePlayback.dvrEnabled`
+(public boolean, false on VOD — confirmed). The seekable window boundaries
+(`GetSeekableStart` / `GetSeekableEnd`) are read from **private fields**
+`_playableRegionStartTime` and `_playableRegionDuration` — no public accessor
+exists for the seekable range (`seekableRange`, `getSeekable`, `getSeekableRange`,
+`dvrInUse` all absent). These private-field reads are **fragile and unverified
+against a real live/DVR stream**; they may break on a future player update.
+
+**A4 / D4 — Side-loaded subtitles (`AddSubtitleSource`):**
+External subtitle tracks are injected via `playback.externalTracks` at
+construction time with the shape `{ kind: "subtitles", src, label, lang }`.
+Clappr's HTML5 playback wires them via `_setupExternalTracks()`, making them
+appear in `closedCaptionsTracks` alongside any in-manifest tracks so the
+standard `ApplySubtitles` / `SelectTextTrack` path picks them up unchanged. The
+exact field name (`lang` vs `srclang`) and the overall shape are **unverified
+against a real external `.vtt` file**. In-manifest subtitles (no `?sub_lang=`)
+are fully verified (7 tracks on the test stream).
