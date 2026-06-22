@@ -24,6 +24,10 @@
 					"enable-chrome": {
 						"name": "Enable Chrome",
 						"desc": "Show the GCore MediaControl control bar (player built-in UI). Off by default; hosts typically provide their own UI."
+					},
+					"enable-dvr": {
+						"name": "Enable DVR",
+						"desc": "Enable DVR mode (seekable live window). Sets playbackType: 'dvr' on the player config. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
 					}
 				},
 				"aceCategories": {
@@ -74,6 +78,11 @@
 						"list-name": "Is offline",
 						"display-text": "Is offline",
 						"description": "Whether the video player is offline or not"
+					},
+					"is-dvr": {
+						"list-name": "Is DVR",
+						"display-text": "Is DVR",
+						"description": "Whether the current stream is a DVR (seekable live) stream. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
 					}
 				},
 				"actions": {
@@ -217,6 +226,17 @@
 						"list-name": "Resize",
 						"display-text": "Resize player to container",
 						"description": "Re-sync the player dimensions to its container. The player is automatically resized via ResizeObserver; use this action when an immediate manual re-sync is needed."
+					},
+					"set-enable-dvr": {
+						"list-name": "Set Enable DVR",
+						"display-text": "Set DVR mode enabled to {0}",
+						"description": "Enable or disable DVR mode (seekable live window). Requires a player rebuild to take effect. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"params": {
+							"enable": {
+								"name": "Enable",
+								"desc": "True to enable DVR mode; false to disable it."
+							}
+						}
 					}
 				},
 				"expressions": {
@@ -267,6 +287,14 @@
 					"get-quality-count": {
 						"description": "The number of available ABR quality levels.",
 						"translated-name": "GetQualityCount"
+					},
+					"get-seekable-start": {
+						"description": "The start of the DVR seekable window (seconds). 0 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"translated-name": "GetSeekableStart"
+					},
+					"get-seekable-end": {
+						"description": "The end of the DVR seekable window (seconds). -1 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"translated-name": "GetSeekableEnd"
 					}
 				},
 				"debugger": {
@@ -287,7 +315,11 @@
 					"currentQuality": "Current Quality Level",
 					"qualityCount": "Quality Level Count",
 					"fallbackUrls": "Fallback URL Count",
-					"subtitleSources": "External Subtitle Source Count"
+					"subtitleSources": "External Subtitle Source Count",
+					"enableDvr": "Enable DVR",
+					"isDvr": "Is DVR Stream",
+					"seekableStart": "DVR Seekable Start",
+					"seekableEnd": "DVR Seekable End"
 				}
 			}
 		}

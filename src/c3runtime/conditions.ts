@@ -30,5 +30,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 	},
 	IsMuted(this: SDKInstanceClass) {
 		return this._audioState === "muted";
+	},
+	IsDVR(this: SDKInstanceClass) {
+		return this._IsDVR();
 	}
 };

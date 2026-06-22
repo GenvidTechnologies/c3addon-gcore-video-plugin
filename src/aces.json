@@ -39,6 +39,10 @@
 			{
 				"id": "is-offline",
 				"scriptName": "IsOffline"
+			},
+			{
+				"id": "is-dvr",
+				"scriptName": "IsDVR"
 			}
 		],
 		"actions": [
@@ -169,6 +173,16 @@
 			{
 				"id": "resize",
 				"scriptName": "Resize"
+			},
+			{
+				"id": "set-enable-dvr",
+				"scriptName": "SetEnableDVR",
+				"params": [
+					{
+						"id": "enable",
+						"type": "boolean"
+					}
+				]
 			}
 		],
 		"expressions": [
@@ -230,6 +244,16 @@
 			{
 				"id": "get-quality-count",
 				"expressionName": "GetQualityCount",
+				"returnType": "number"
+			},
+			{
+				"id": "get-seekable-start",
+				"expressionName": "GetSeekableStart",
+				"returnType": "number"
+			},
+			{
+				"id": "get-seekable-end",
+				"expressionName": "GetSeekableEnd",
 				"returnType": "number"
 			}
 		]

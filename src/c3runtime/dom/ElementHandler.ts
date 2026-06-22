@@ -60,6 +60,8 @@
     // -1 = auto/ABR, otherwise the level index.
     levels?: Array<{ level: number; width: number; height: number; bitrate: number; codec?: string }>;
     currentLevel?: number;
+    // DVR support: public boolean getter — false on VOD (docs/gcore-player-api.md A6).
+    dvrEnabled?: boolean;
   }
 
   interface GCorePlayerConstructor {
@@ -130,11 +132,16 @@
     lastVolume: number;
     noLowLatency: boolean;
     enableChrome: boolean;
+    enableDvr: boolean;
     fallbackUrls: string[];
     subtitleSources: Array<{ url: string; language: string; label: string }>;
     // Track the last quality level reported to the runtime so we only post
     // currentQuality on a TimeUpdate when it actually changed (no quality event).
     lastReportedLevel: number;
+    // Snapshot of the last DVR state posted to the runtime, used in TimeUpdate
+    // to suppress redundant bridge posts when the window hasn't changed.
+    // Mirror of lastReportedLevel, but for DVR window data.
+    lastDvr: { isDvr: boolean; seekableStart: number; seekableEnd: number };
     resizeObserver: ResizeObserver | null;
     controller: AbortController;
 
@@ -155,9 +162,11 @@
       this.lastVolume = -1;
       this.noLowLatency = false;
       this.enableChrome = false;
+      this.enableDvr = false;
       this.fallbackUrls = [];
       this.subtitleSources = [];
       this.lastReportedLevel = -2; // sentinel: "not yet reported"
+      this.lastDvr = { isDvr: false, seekableStart: 0, seekableEnd: -1 };
       this.resizeObserver = null;
       this.controller = new AbortController();
 
@@ -215,11 +224,13 @@
       this.subtitleLang = (e["subtitles"] ?? "off") as string;
       const noLowLatency = (e["noLowLatency"] ?? false) as boolean;
       this.enableChrome = (e["enableChrome"] ?? false) as boolean;
+      const enableDvr = (e["enableDvr"] ?? false) as boolean;
       const fallbackUrls = (e["fallbackUrls"] ?? []) as string[];
       const subtitleSources = (e["subtitleSources"] ?? []) as Array<{ url: string; language: string; label: string }>;
 
-      if (this.NeedsRebuild({ url, noLowLatency, fallbackUrls, subtitleSources })) {
+      if (this.NeedsRebuild({ url, noLowLatency, enableDvr, fallbackUrls, subtitleSources })) {
         this.noLowLatency = noLowLatency;
+        this.enableDvr = enableDvr;
         this.fallbackUrls = fallbackUrls;
         this.subtitleSources = subtitleSources;
         this.currentUrl = url;
@@ -246,12 +257,13 @@
     // (latency mode, etc.) extend this by adding fields to `next` and comparing
     // them against current state here. Subtitle-only changes take the light path
     // (no rebuild) — they are applied to the existing player via ApplySubtitles.
-    private NeedsRebuild(next: { url: string; noLowLatency: boolean; fallbackUrls: string[]; subtitleSources: Array<{ url: string; language: string; label: string }> }): boolean {
+    private NeedsRebuild(next: { url: string; noLowLatency: boolean; enableDvr: boolean; fallbackUrls: string[]; subtitleSources: Array<{ url: string; language: string; label: string }> }): boolean {
       if (this.currentUrl !== next.url) return true;
       // Construction-time config changes below are only meaningful when a URL is
       // set (no point rebuilding an idle player).
       if (next.url !== "") {
         if (this.noLowLatency !== next.noLowLatency) return true;
+        if (this.enableDvr !== next.enableDvr) return true;
         if (JSON.stringify(this.fallbackUrls) !== JSON.stringify(next.fallbackUrls)) return true;
         if (JSON.stringify(this.subtitleSources) !== JSON.stringify(next.subtitleSources)) return true;
       }
@@ -300,7 +312,7 @@
         }));
       }
 
-      return {
+      const config: Record<string, unknown> = {
         autoPlay: true,
         // Only the first autoplay needs forced mute; subsequent loads keep the
         // user's mute state.
@@ -308,6 +320,15 @@
         sources,
         playback,
       };
+
+      if (this.enableDvr) {
+        // DVR mode opt-in: sets playbackType to "dvr" so the player enables the
+        // seekable live window. Effect unverified against a live DVR stream
+        // (docs/gcore-player-api.md A6).
+        config.playbackType = "dvr";
+      }
+
+      return config;
     }
 
     async CreatePlayer(url: string) {
@@ -560,6 +581,33 @@
           }
         }
         this.PostStateToRuntime(state);
+
+        // Poll DVR window on each TimeUpdate — the live DVR window grows over
+        // time, so we need to refresh it periodically. Only post when something
+        // changed to avoid spamming the bridge (mirror lastReportedLevel approach).
+        {
+          const ap = player.player?.core?.activePlayback;
+          const isDvr = ap?.dvrEnabled ?? false;
+          const apAny = ap as unknown as Record<string, unknown> | undefined;
+          const start =
+            typeof apAny?.["_playableRegionStartTime"] === "number"
+              ? (apAny["_playableRegionStartTime"] as number)
+              : 0;
+          const dur =
+            typeof apAny?.["_playableRegionDuration"] === "number"
+              ? (apAny["_playableRegionDuration"] as number)
+              : -1;
+          const seekableStart = start;
+          const seekableEnd = dur >= 0 ? start + dur : -1;
+          if (
+            isDvr !== this.lastDvr.isDvr ||
+            seekableStart !== this.lastDvr.seekableStart ||
+            seekableEnd !== this.lastDvr.seekableEnd
+          ) {
+            this.lastDvr = { isDvr, seekableStart, seekableEnd };
+            this.PostStateToRuntime({ isDvr, seekableStart, seekableEnd });
+          }
+        }
       });
 
       player.on(PlayerEvent.VolumeUpdate, () => {
@@ -600,6 +648,10 @@
         const currentQuality = activePlayback?.currentLevel ?? -1;
         this.lastReportedLevel = currentQuality;
         this.PostStateToRuntime({ qualityCount, currentQuality });
+        // Post initial DVR state once the manifest is parsed and the player is
+        // ready. The seekable window (if any) should be known at this point.
+        // PostDvrState also updates lastDvr so TimeUpdate suppression stays in sync.
+        this.PostDvrState(player);
       });
     }
 
@@ -620,6 +672,40 @@
         state.duration = duration;
       }
       this.PostStateToRuntime(state);
+    }
+
+    // Read DVR state from the underlying Clappr playback and post it to the
+    // runtime. `dvrEnabled` is a public boolean getter (false on VOD).
+    // The seekable-window boundaries live in PRIVATE fields with no public
+    // accessor — we read them defensively through a loose cast.
+    //
+    // IMPORTANT: The private-field reads (_playableRegionStartTime,
+    // _playableRegionDuration) are fragile and pending verification against a
+    // real DVR stream (docs/gcore-player-api.md A6). They may break on a future
+    // player update.
+    //
+    // Also updates `lastDvr` so that the TimeUpdate suppression logic stays in
+    // sync after an unconditional post (e.g. from the Ready handler).
+    private PostDvrState(player: GCorePlayer) {
+      const ap = player.player?.core?.activePlayback;
+      const isDvr = ap?.dvrEnabled ?? false;
+
+      // Read private fields defensively — no public seekable-range API exists.
+      // Cast through Record<string, unknown> to avoid any TS property-access error.
+      const apAny = ap as unknown as Record<string, unknown> | undefined;
+      const start =
+        typeof apAny?.["_playableRegionStartTime"] === "number"
+          ? (apAny["_playableRegionStartTime"] as number)
+          : 0;
+      const dur =
+        typeof apAny?.["_playableRegionDuration"] === "number"
+          ? (apAny["_playableRegionDuration"] as number)
+          : -1;
+      const seekableStart = start;
+      const seekableEnd = dur >= 0 ? start + dur : -1;
+
+      this.lastDvr = { isDvr, seekableStart, seekableEnd };
+      this.PostStateToRuntime({ isDvr, seekableStart, seekableEnd });
     }
 
     DestroyPlayer() {

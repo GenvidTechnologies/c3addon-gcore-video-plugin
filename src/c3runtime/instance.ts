@@ -19,6 +19,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	_subtitles: string = "";
 	_noLowLatency: boolean = false;
 	_enableChrome: boolean = false;
+	_enableDvr: boolean = false;
 	_fallbackUrls: string[] = [];
 	_subtitleSources: Array<{ url: string; language: string; label: string }> = [];
 	_isInitialized = false;
@@ -29,6 +30,11 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	_duration = -1;
 	_currentQuality = -1;
 	_qualityCount = 0;
+
+	// DVR readout state — per-video; reset in _InitializeState.
+	_isDvr: boolean = false;
+	_seekableStart: number = 0;
+	_seekableEnd: number = -1;
 
 	_playerState = "offline";
 	_audioState = "offline";
@@ -51,6 +57,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 			this._subtitles = (properties[1] ?? "off") as string;
 			this._noLowLatency = (properties[2] ?? false) as boolean;
 			this._enableChrome = (properties[3] ?? false) as boolean;
+			this._enableDvr = (properties[4] ?? false) as boolean;
 		}
 
 		this._createElement();
@@ -70,6 +77,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 			"subtitles": this._subtitles,
 			"noLowLatency": this._noLowLatency,
 			"enableChrome": this._enableChrome,
+			"enableDvr": this._enableDvr,
 			"fallbackUrls": this._fallbackUrls,
 			"subtitleSources": this._subtitleSources
 		};
@@ -86,6 +94,11 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._duration = -1;
 		this._currentQuality = -1;
 		this._qualityCount = 0;
+
+		// Reset DVR readout — per-video, like currentQuality.
+		this._isDvr = false;
+		this._seekableStart = 0;
+		this._seekableEnd = -1;
 
 		this._playerState = "offline";
 		this._audioState = "offline";
@@ -149,6 +162,20 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 
 			if (state.qualityCount !== undefined) {
 				this._qualityCount = state.qualityCount as number;
+			}
+
+			// DVR readout — posted from ElementHandler when the DVR window is known.
+			// Use !== undefined so a legitimate false/0 is stored rather than dropped.
+			if (state.isDvr !== undefined) {
+				this._isDvr = state.isDvr as boolean;
+			}
+
+			if (state.seekableStart !== undefined) {
+				this._seekableStart = state.seekableStart as number;
+			}
+
+			if (state.seekableEnd !== undefined) {
+				this._seekableEnd = state.seekableEnd as number;
 			}
 
 			// Mark the video as ready (loaded and playable) once its volume and
@@ -295,6 +322,33 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		return this._enableChrome ? 1 : 0;
 	}
 
+	_SetEnableDVR(enable?: boolean) {
+		// Only default when the arg is actually absent (nullish); an explicit
+		// false must be preserved — mirrors the _SetEnableChrome handling.
+		enable = enable ?? false;
+		if (this._enableDvr === enable)
+			return;
+
+		this._enableDvr = enable;
+		this._updateElementState();
+	}
+
+	_GetEnableDVR() {
+		return this._enableDvr ? 1 : 0;
+	}
+
+	_GetSeekableStart() {
+		return this._seekableStart;
+	}
+
+	_GetSeekableEnd() {
+		return this._seekableEnd;
+	}
+
+	_IsDVR() {
+		return this._isDvr;
+	}
+
 	_saveToJson() {
 		// TODO: Add more state in it?
 		return {
@@ -303,6 +357,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 			"subtitles": this._subtitles,
 			"noLowLatency": this._noLowLatency,
 			"enableChrome": this._enableChrome,
+			"enableDvr": this._enableDvr,
 			"fallbackUrls": this._fallbackUrls,
 			"subtitleSources": this._subtitleSources
 		};
@@ -314,6 +369,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._subtitles = (o["subtitles"] ?? "off") as string;
 		this._noLowLatency = (o["noLowLatency"] ?? false) as boolean;
 		this._enableChrome = (o["enableChrome"] ?? false) as boolean;
+		this._enableDvr = (o["enableDvr"] ?? false) as boolean;
 		this._fallbackUrls = (o["fallbackUrls"] ?? []) as string[];
 		this._subtitleSources = (o["subtitleSources"] ?? []) as Array<{ url: string; language: string; label: string }>;
 
@@ -332,6 +388,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 					{ name: prefix + "subtitles", value: this._subtitles, onedit: v => this._SetSubtitles(v as string) },
 					{ name: prefix + "noLowLatency", value: this._noLowLatency, onedit: v => this._SetNoLowLatency(v as boolean) },
 					{ name: prefix + "enableChrome", value: this._enableChrome, onedit: v => this._SetEnableChrome(v as boolean) },
+					{ name: prefix + "enableDvr", value: this._enableDvr, onedit: v => this._SetEnableDVR(v as boolean) },
 					{ name: prefix + "fallbackUrls", value: this._fallbackUrls.length },
 					{ name: prefix + "subtitleSources", value: this._subtitleSources.length },
 					{ name: prefix + "playbackTime", value: this._currentPlaybackTime, onedit: v => this._SetPlaybackTime(v as number) },
@@ -342,7 +399,10 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 					{ name: prefix + "lastErrorCategory", value: this._lastError.category as string },
 					{ name: prefix + "lastErrorMessage", value: this._lastError.message as string },
 					{ name: prefix + "currentQuality", value: this._currentQuality, onedit: v => this._SetQuality(v as number) },
-					{ name: prefix + "qualityCount", value: this._qualityCount }
+					{ name: prefix + "qualityCount", value: this._qualityCount },
+					{ name: prefix + "isDvr", value: this._isDvr },
+					{ name: prefix + "seekableStart", value: this._seekableStart },
+					{ name: prefix + "seekableEnd", value: this._seekableEnd }
 				]
 			},
 		];

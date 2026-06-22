@@ -39,5 +39,11 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 	},
 	GetQualityCount(this:SDKInstanceClass) {
 		return this._qualityCount;
+	},
+	GetSeekableStart(this:SDKInstanceClass) {
+		return this._GetSeekableStart();
+	},
+	GetSeekableEnd(this:SDKInstanceClass) {
+		return this._GetSeekableEnd();
 	}
 };
