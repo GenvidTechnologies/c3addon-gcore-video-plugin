@@ -29,5 +29,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	},
 	SetQuality(this:SDKInstanceClass, level: number) {
 		this._SetQuality(level);
+	},
+	SetEnableChrome(this:SDKInstanceClass, enable: boolean) {
+		this._SetEnableChrome(enable);
 	}
 };

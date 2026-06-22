@@ -20,6 +20,10 @@
 					"no-low-latency": {
 						"name": "No low latency flag",
 						"desc": "No low latency flag. Intended to be used by live stream."
+					},
+					"enable-chrome": {
+						"name": "Enable Chrome",
+						"desc": "Show the GCore MediaControl control bar (player built-in UI). Off by default; hosts typically provide their own UI."
 					}
 				},
 				"aceCategories": {
@@ -167,6 +171,17 @@
 								"desc": "Quality level index. -1 = auto/ABR, otherwise the level index from GetQualityCount."
 							}
 						}
+					},
+					"set-enable-chrome": {
+						"list-name": "Set Enable Chrome",
+						"display-text": "Set player built-in control bar (chrome) enabled to {0}",
+						"description": "Show or hide the GCore MediaControl control bar. This is a live change and does not require a player rebuild.",
+						"params": {
+							"enable": {
+								"name": "Enable",
+								"desc": "True to show the built-in control bar; false to hide it."
+							}
+						}
 					}
 				},
 				"expressions": {
@@ -206,6 +221,10 @@
 						"description": "The no low latency flag for the video.",
 						"translated-name": "NoLowLatency"
 					},
+					"get-enable-chrome": {
+						"description": "Whether the GCore MediaControl control bar (player built-in UI) is enabled.",
+						"translated-name": "GetEnableChrome"
+					},
 					"get-current-quality": {
 						"description": "The current ABR quality level index. -1 = auto/ABR.",
 						"translated-name": "GetCurrentQuality"
@@ -220,6 +239,7 @@
 					"url": "Base URL",
 					"subtitles": "Subtitles",
 					"noLowLatency": "Disable Low Latency",
+					"enableChrome": "Enable Chrome (Control Bar)",
 					"isInitialized": "Initialized",
 					"isReady": "Ready",
 					"playbackTime": "Playback Time",

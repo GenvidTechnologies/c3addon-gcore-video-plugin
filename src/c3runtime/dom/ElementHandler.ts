@@ -27,8 +27,20 @@
     player?: {
       core?: {
         activePlayback?: ClapprPlayback;
+        // Retrieve a registered Clappr plugin by name (e.g. 'media_control').
+        getPlugin?: (name: string) => ClapprPlugin | undefined | null;
+        // Fallback: the list of registered plugin instances.
+        plugins?: ClapprPlugin[];
       };
     };
+  }
+
+  // Minimal interface for a Clappr plugin. MediaControl exposes enable()/disable()
+  // to show/hide the control bar without a player rebuild.
+  interface ClapprPlugin {
+    name?: string;
+    enable?(): void;
+    disable?(): void;
   }
 
   // The active playback (e.g. the HLS backend). Subtitle tracks are loaded via
@@ -117,6 +129,7 @@
     lastMuted: boolean;
     lastVolume: number;
     noLowLatency: boolean;
+    enableChrome: boolean;
     // Track the last quality level reported to the runtime so we only post
     // currentQuality on a TimeUpdate when it actually changed (no quality event).
     lastReportedLevel: number;
@@ -139,6 +152,7 @@
       this.lastMuted = true;
       this.lastVolume = -1;
       this.noLowLatency = false;
+      this.enableChrome = false;
       this.lastReportedLevel = -2; // sentinel: "not yet reported"
       this.resizeObserver = null;
       this.controller = new AbortController();
@@ -196,6 +210,7 @@
       // query param anymore — see ApplySubtitles).
       this.subtitleLang = (e["subtitles"] ?? "off") as string;
       const noLowLatency = (e["noLowLatency"] ?? false) as boolean;
+      this.enableChrome = (e["enableChrome"] ?? false) as boolean;
 
       if (this.NeedsRebuild({ url, noLowLatency })) {
         this.noLowLatency = noLowLatency;
@@ -213,6 +228,8 @@
         // URL unchanged (e.g. only the subtitle language changed) — apply it to
         // the existing player without rebuilding it.
         this.ApplySubtitles();
+        // A live chrome toggle (no URL change) takes effect immediately.
+        this.ApplyChrome();
       }
     }
 
@@ -366,6 +383,29 @@
       this.SelectTextTrack(playback, match.id);
     }
 
+    private ApplyChrome() {
+      const core = this.player?.player?.core;
+      if (!core) {
+        return;
+      }
+      // Prefer the typed getPlugin() accessor; fall back to scanning the plugins
+      // array for implementations that don't expose getPlugin.
+      const mediaControl: ClapprPlugin | undefined | null =
+        core.getPlugin?.("media_control") ??
+        core.plugins?.find((p) => p.name === "media_control");
+
+      if (!mediaControl) {
+        console.warn("[video player] media_control plugin not found; cannot toggle chrome");
+        return;
+      }
+
+      if (this.enableChrome) {
+        mediaControl.enable?.();
+      } else {
+        mediaControl.disable?.();
+      }
+    }
+
     SelectTextTrack(playback: ClapprPlayback, trackId: number) {
       if (typeof playback.setTextTrack === "function") {
         playback.setTextTrack(trackId);
@@ -502,6 +542,9 @@
         this.PostPlaybackInfo(player);
         // Subtitle tracks are known once the manifest is parsed (by Ready).
         this.ApplySubtitles();
+        // Apply the initial/post-rebuild chrome (control bar) state now that
+        // plugins are live and the media_control plugin is available.
+        this.ApplyChrome();
         // Quality levels are available after manifest parse; report them now.
         const activePlayback = player.player?.core?.activePlayback;
         const qualityCount = activePlayback?.levels?.length ?? 0;

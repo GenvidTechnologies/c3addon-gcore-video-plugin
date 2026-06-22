@@ -31,6 +31,9 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 	NoLowLatency(this:SDKInstanceClass) {
 		return this._GetNoLowLatency();
 	},
+	GetEnableChrome(this:SDKInstanceClass) {
+		return this._GetEnableChrome();
+	},
 	GetCurrentQuality(this:SDKInstanceClass) {
 		return this._currentQuality;
 	},

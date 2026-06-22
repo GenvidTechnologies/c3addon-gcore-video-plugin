@@ -18,6 +18,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	_url: string = "";
 	_subtitles: string = "";
 	_noLowLatency: boolean = false;
+	_enableChrome: boolean = false;
 	_isInitialized = false;
 	_isReady = false;
 
@@ -47,6 +48,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 			this._url = (properties[0] ?? "") as string;
 			this._subtitles = (properties[1] ?? "off") as string;
 			this._noLowLatency = (properties[2] ?? false) as boolean;
+			this._enableChrome = (properties[3] ?? false) as boolean;
 		}
 
 		this._createElement();
@@ -64,7 +66,8 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		return {
 			"url": this._url,
 			"subtitles": this._subtitles,
-			"noLowLatency": this._noLowLatency
+			"noLowLatency": this._noLowLatency,
+			"enableChrome": this._enableChrome
 		};
 	}
 
@@ -254,13 +257,29 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		return this._noLowLatency ? 1 : 0;
 	}
 
+	_SetEnableChrome(enable?: boolean) {
+		// Only default when the arg is actually absent (nullish); an explicit
+		// false must be preserved — mirrors the _SetNoLowLatency handling.
+		enable = enable ?? false;
+		if (this._enableChrome === enable)
+			return;
+
+		this._enableChrome = enable;
+		this._updateElementState();
+	}
+
+	_GetEnableChrome() {
+		return this._enableChrome ? 1 : 0;
+	}
+
 	_saveToJson() {
 		// TODO: Add more state in it?
 		return {
 			// data to be saved for savegames
 			"url": this._url,
 			"subtitles": this._subtitles,
-			"noLowLatency": this._noLowLatency
+			"noLowLatency": this._noLowLatency,
+			"enableChrome": this._enableChrome
 		};
 	}
 
@@ -269,6 +288,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._url = (o["url"] ?? "") as string;
 		this._subtitles = (o["subtitles"] ?? "off") as string;
 		this._noLowLatency = (o["noLowLatency"] ?? false) as boolean;
+		this._enableChrome = (o["enableChrome"] ?? false) as boolean;
 
 		this._updateElementState();		// ensures any state changes are updated in the DOM
 	}
@@ -284,6 +304,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 					{ name: prefix + "url", value: this._url, onedit: v => this._SetURL(v as string, this._subtitles, this._noLowLatency) },
 					{ name: prefix + "subtitles", value: this._subtitles, onedit: v => this._SetSubtitles(v as string) },
 					{ name: prefix + "noLowLatency", value: this._noLowLatency, onedit: v => this._SetNoLowLatency(v as boolean) },
+					{ name: prefix + "enableChrome", value: this._enableChrome, onedit: v => this._SetEnableChrome(v as boolean) },
 					{ name: prefix + "playbackTime", value: this._currentPlaybackTime, onedit: v => this._SetPlaybackTime(v as number) },
 					{ name: prefix + "volume", value: this._currentVolume, onedit: v => this._SetVolume(v as number) },
 					{ name: prefix + "duration", value: this._duration },

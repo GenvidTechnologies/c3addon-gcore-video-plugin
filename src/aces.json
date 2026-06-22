@@ -127,6 +127,16 @@
 						"type": "number"
 					}
 				]
+			},
+			{
+				"id": "set-enable-chrome",
+				"scriptName": "SetEnableChrome",
+				"params": [
+					{
+						"id": "enable",
+						"type": "boolean"
+					}
+				]
 			}
 		],
 		"expressions": [
@@ -173,6 +183,11 @@
 			{
 				"id": "no-low-latency",
 				"expressionName": "NoLowLatency",
+				"returnType": "number"
+			},
+			{
+				"id": "get-enable-chrome",
+				"expressionName": "GetEnableChrome",
 				"returnType": "number"
 			},
 			{

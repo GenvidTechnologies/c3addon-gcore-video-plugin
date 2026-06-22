@@ -71,6 +71,7 @@ const PLUGIN_CLASS =
         new SDK.PluginProperty("text", "video-url", ""),
         new SDK.PluginProperty("text", "video-subtitles", "off"),
         new SDK.PluginProperty("check", "no-low-latency", false),
+        new SDK.PluginProperty("check", "enable-chrome", false),
       ]);
 
       SDK.Lang.PopContext(); // .properties
