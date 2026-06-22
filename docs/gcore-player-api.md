@@ -81,15 +81,59 @@ host is the client-id subdomain. Rules:
 
 ### Events — `player.on(PlayerEvent.X, handler)`
 
-`PlayerEvent` values used: `Play` `"play"`, `Pause` `"pause"`, `Ended`
-`"ended"`, `Error` `"error"`, `Ready` `"ready"`, `TimeUpdate` `"timeupdate"`,
-`VolumeUpdate` `"volumeupdate"` (also `Seek`, `Stop`, `Fullscreen`, `Resize`).
+The full `PlayerEvent` enum (confirmed 2026-06-22 against v2 at
+`player.gvideo.co/v2/assets/latest/index.js`) has exactly **11 keys**:
+`Ended`, `Error`, `Fullscreen`, `Ready`, `Play`, `Pause`, `Resize`, `Seek`,
+`Stop`, `TimeUpdate`, `VolumeUpdate`. There is **no quality/level-change
+event** — see the Quality levels section below.
+
+`PlayerEvent` values used by the plugin: `Play` `"play"`, `Pause` `"pause"`,
+`Ended` `"ended"`, `Error` `"error"`, `Ready` `"ready"`, `TimeUpdate`
+`"timeupdate"`, `VolumeUpdate` `"volumeupdate"`.
+
+**TimeUpdate payload (confirmed):** `{ current, total }` — e.g.
+`{ current: 138.18, total: 1637.03 }`. The plugin's destructuring of
+`{ current, total }` is correct.
+
+**Error payload (confirmed, richer than the wrapper implies):** The error
+object carries `.message` (e.g. `"hls error: type: networkError, details:
+manifestLoadError"`), `.code` (string enum, e.g. `"MEDIA_SOURCE_UNAVAILABLE"`),
+`.level` (`"FATAL"`), `.origin` (`"hls"`), `.scope` (`"playback"`),
+`.description`, and `.UI.message`. `err.message` is reliably present; the
+plugin's `err.message ?? String(err)` fallback is correct.
+
+> **Caveat — Error fires repeatedly:** On a failing source (bad URL, network
+> error) the Error event fires **once per hls.js retry**, not once per failure.
+> The `OnError` trigger will re-fire many times for a single bad stream URL.
 
 ### Control methods — synchronous
 
-`play()`, `pause()`, `seek(seconds)`, `setVolume(0..1)`, `getVolume()`,
+`play()`, `pause()`, `seek(seconds)`, `setVolume(n)`, `getVolume()`,
 `getDuration()`, `mute()`, `unmute()`, `isMuted()`, `destroy()`. Unlike the old
 API these return values directly (no callbacks).
+
+**Volume units — confirmed 0..100 range, latent bug in plugin (2026-06-22):**
+`setVolume` and `getVolume` operate in **percent (0..100)**, not 0..1.
+Empirically, `setVolume(0.5)` set the underlying `<video>.volume` to `0.005`
+(the player divides the argument by 100), while `getVolume()` returned `0.5`
+(the wrapper echoes the as-set value, not the media-element level). A game
+calling `SetVolume(0.5)` expecting 50% volume actually gets 0.5% (near silence);
+half volume requires `SetVolume(50)`. **The plugin currently passes the ACE
+value through unchanged** — so it inherits this range semantics. Whether the
+ACE parameter should be 0..100 or whether the plugin should normalize is a
+discrepancy to resolve before shipping a volume feature (see follow-ups).
+
+### Quality levels (confirmed 2026-06-22)
+
+`player.player.core.activePlayback.levels` is an array of
+`{ level, width, height, bitrate, codec }` objects — observed 4 levels
+(360p / 468p / 720p / 1080p with bitrates). `activePlayback.currentLevel` is
+readable/writable; `-1` means ABR/auto.
+
+**No quality-change event exists at the wrapper level.** The `PlayerEvent` enum
+has no quality or level entry (confirmed above). Quality state can only be
+polled (e.g. on `Ready` or `TimeUpdate`); an `OnQualityChanged` trigger is not
+feasible without reaching into the Clappr core directly.
 
 ### Subtitles (the tricky one)
 
@@ -100,8 +144,18 @@ demonstrated by [`../test/player-test.html`](../test/player-test.html):
 
 1. **Reach the real playback.** Tracks and selection live on the inner Clappr
    player: `player.player.core.activePlayback`. It exposes `closedCaptionsTracks`
-   (`[{ id, name, track: { language } }]`) and `setTextTrack(id)`. The wrapper's
-   `player.closedCaptionsTrackId` is a **no-op** on the HLS backend.
+   and `setTextTrack(id)`. The wrapper's `player.closedCaptionsTrackId` is a
+   **no-op** on the HLS backend.
+
+   **Track shape (confirmed 2026-06-22):** each entry has `id`, `language`, and
+   `name` (e.g. `{ id: 0, language: "en", name: "English" }`). The `label`
+   field is **not present** (was undefined in all 7 observed tracks). The plugin
+   matches by `language` then `name`, which is correct. Non-Latin display names
+   (`ja`, `zh`) rely on the `language` field. With a real GCore VOD stream and
+   no `?sub_lang=` query param, all 7 subtitle renditions (en/de/fr/pt/es/ja/zh)
+   are already present in `closedCaptionsTracks` and `<video>.textTracks`
+   (length 7) — the legacy `?sub_lang=` query param is unnecessary for
+   in-account content.
 2. **Load via `setTextTrack(id)`.** It sets `hls.subtitleTrack`, which fetches the
    subtitle playlist + `.vtt` segments. (`-1` disables.) Combined with
    `renderTextTracksNatively: true`, the browser renders the cues.
@@ -150,12 +204,52 @@ provisioning that the DOM-native path does not.
 
 ## Status & follow-ups
 
-Verified working in a Construct 3 preview: playback, embed-URL → manifest
-resolution, container sizing/resize, ready-state, mute/volume persistence across
-videos, and subtitle selection/rendering.
+### Confirmed working
 
-- **Low latency is not wired into v2.** The legacy `no_low_latency` URL query
-  param is dropped during manifest resolution; proper low-latency config is a
-  follow-up (GitHub issue #1).
-- `setVolume`/`getVolume` round-trip in the player's own units (the ACE value is
-  passed through as-is) — confirm the game's volume range matches if it matters.
+Verified in a Construct 3 preview: playback, embed-URL → manifest resolution,
+container sizing/resize, ready-state, mute/volume persistence across videos,
+and subtitle selection/rendering.
+
+The following were additionally confirmed 2026-06-22 against
+`@gcorevideo/player` v2 (`player.gvideo.co/v2/assets/latest/index.js`) with a
+real GCore VOD stream (master.m3u8):
+
+- `TimeUpdate` payload is `{ current, total }` — plugin destructuring correct.
+- `Error` payload includes `.message`, `.code`, `.level`, `.origin`, `.scope`,
+  `.description`, `.UI.message` — `err.message` reliably present.
+- In-manifest subtitle tracks (7 renditions on test stream) are exposed without
+  any `?sub_lang=` query param; track shape is `{ id, language, name }` (no
+  `label` field).
+- Full `PlayerEvent` enum has exactly 11 keys (listed above); no quality event.
+- `activePlayback.levels` and `activePlayback.currentLevel` work as described;
+  `-1` = ABR.
+- Chrome/UI plugin export names confirmed (BottomGear, Spinner, MediaControl,
+  ErrorScreen, LevelSelector, QualityLevels, ClosedCaptions, Subtitles,
+  DvrControls, AudioTracks, AudioSelector, SeekTime, Thumbnails,
+  PictureInPicture, PlaybackRate, Poster, Logo, Share, ContextMenu,
+  ClickToPause, and more).
+
+### Known discrepancies / latent bugs
+
+- **Volume range (0..100, not 0..1):** `setVolume`/`getVolume` use percent
+  units (0..100). The plugin passes the ACE value through unchanged, so a game
+  calling `SetVolume(0.5)` gets 0.5% volume, not 50%. Needs resolution before
+  shipping a volume feature — see the Control methods section above.
+- **Error event fires repeatedly:** `OnError` can re-trigger many times for a
+  single bad stream URL (one per hls.js retry).
+
+### Pending verification (needs live / DVR / LL stream)
+
+- **Low latency:** `playback.playbackType` and `playback.priorityTransport` are
+  accepted Player config keys; `activePlayback._playbackType` is a private field.
+  Default transport on VOD is `hls`. The full effect of enabling/disabling
+  low-latency mode requires a live LL stream to confirm (relevant for the
+  `noLowLatency` toggle, GitHub issue #1).
+- **DVR window:** `activePlayback.dvrEnabled` is a public boolean getter (false
+  on VOD). There is no public seekable-range accessor (`seekableRange`,
+  `getSeekable`, `seekable`, `getSeekableRange`, `dvrInUse` all absent). DVR
+  window data lives in private fields (`_playableRegionStartTime`,
+  `_playableRegionDuration`, `_playbackType`, `_playlistType`,
+  `_extrapolatedWindowNumSegments`, `_minDvrSize`) — reading them would be
+  fragile. DVR support needs verification against a real live/DVR stream before
+  relying on it.
