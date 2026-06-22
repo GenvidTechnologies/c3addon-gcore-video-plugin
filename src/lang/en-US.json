@@ -156,6 +156,17 @@
 								"desc": "No low latency flag."
 							}
 						}
+					},
+					"set-quality": {
+						"list-name": "Set Quality",
+						"display-text": "Set quality level to {0}",
+						"description": "Set the ABR quality level. -1 = auto/ABR, otherwise the level index.",
+						"params": {
+							"level": {
+								"name": "Level",
+								"desc": "Quality level index. -1 = auto/ABR, otherwise the level index from GetQualityCount."
+							}
+						}
 					}
 				},
 				"expressions": {
@@ -194,6 +205,14 @@
 					"no-low-latency": {
 						"description": "The no low latency flag for the video.",
 						"translated-name": "NoLowLatency"
+					},
+					"get-current-quality": {
+						"description": "The current ABR quality level index. -1 = auto/ABR.",
+						"translated-name": "GetCurrentQuality"
+					},
+					"get-quality-count": {
+						"description": "The number of available ABR quality levels.",
+						"translated-name": "GetQualityCount"
 					}
 				},
 				"debugger": {
@@ -209,7 +228,9 @@
 					"playerState": "Player State",
 					"audioState": "Audio State",
 					"lastErrorCategory": "Last Error Category",
-					"lastErrorMessage": "Last Error Message"
+					"lastErrorMessage": "Last Error Message",
+					"currentQuality": "Current Quality Level",
+					"qualityCount": "Quality Level Count"
 				}
 			}
 		}

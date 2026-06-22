@@ -26,5 +26,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	},
 	SetNoLowLatency(this:SDKInstanceClass, noLowLatency: boolean) {
 		this._SetNoLowLatency(noLowLatency);
+	},
+	SetQuality(this:SDKInstanceClass, level: number) {
+		this._SetQuality(level);
 	}
 };

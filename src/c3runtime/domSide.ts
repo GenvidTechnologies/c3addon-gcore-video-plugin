@@ -25,6 +25,7 @@
 		OnUnmute(): void;
 		OnSeek(e: JSONObject): void;
 		OnSetVolume(e: JSONObject): void;
+		OnSetQuality(e: JSONObject): void;
 		UpdateState(e: JSONObject): void;
 		Destroy(): void;
 	};
@@ -49,6 +50,7 @@
 				["unmute", (elem: HTMLElement) => this._handlers.Get(elem)?.OnUnmute()],
 				["seek", (elem: HTMLElement, e: JSONObject) => this._handlers.Get(elem)?.OnSeek(e)],
 				["setVolume", (elem: HTMLElement, e: JSONObject) => this._handlers.Get(elem)?.OnSetVolume(e)],
+				["setQuality", (elem: HTMLElement, e: JSONObject) => this._handlers.Get(elem)?.OnSetQuality(e)],
 			];
 			handlers.map(([e, h]) => this.AddDOMElementMessageHandler(e, (el, data) => h(el as HTMLElement, data as JSONObject)));
 		}

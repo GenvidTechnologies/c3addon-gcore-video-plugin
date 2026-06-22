@@ -44,6 +44,10 @@
       label?: string;
       track?: { id?: number; label?: string; language?: string };
     }>;
+    // ABR quality levels (HLS renditions). currentLevel is readable/writable:
+    // -1 = auto/ABR, otherwise the level index.
+    levels?: Array<{ level: number; width: number; height: number; bitrate: number; codec?: string }>;
+    currentLevel?: number;
   }
 
   interface GCorePlayerConstructor {
@@ -113,6 +117,9 @@
     lastMuted: boolean;
     lastVolume: number;
     noLowLatency: boolean;
+    // Track the last quality level reported to the runtime so we only post
+    // currentQuality on a TimeUpdate when it actually changed (no quality event).
+    lastReportedLevel: number;
     resizeObserver: ResizeObserver | null;
     controller: AbortController;
 
@@ -132,6 +139,7 @@
       this.lastMuted = true;
       this.lastVolume = -1;
       this.noLowLatency = false;
+      this.lastReportedLevel = -2; // sentinel: "not yet reported"
       this.resizeObserver = null;
       this.controller = new AbortController();
 
@@ -452,6 +460,16 @@
         if (typeof total === "number" && !isNaN(total)) {
           state.duration = total;
         }
+        // Poll ABR quality level on each TimeUpdate (no quality-change event).
+        // Only post when the level actually changed to avoid spamming the bridge.
+        const activePlayback = player.player?.core?.activePlayback;
+        if (activePlayback !== undefined) {
+          const currentQuality = activePlayback.currentLevel ?? -1;
+          if (currentQuality !== this.lastReportedLevel) {
+            this.lastReportedLevel = currentQuality;
+            state.currentQuality = currentQuality;
+          }
+        }
         this.PostStateToRuntime(state);
       });
 
@@ -484,6 +502,12 @@
         this.PostPlaybackInfo(player);
         // Subtitle tracks are known once the manifest is parsed (by Ready).
         this.ApplySubtitles();
+        // Quality levels are available after manifest parse; report them now.
+        const activePlayback = player.player?.core?.activePlayback;
+        const qualityCount = activePlayback?.levels?.length ?? 0;
+        const currentQuality = activePlayback?.currentLevel ?? -1;
+        this.lastReportedLevel = currentQuality;
+        this.PostStateToRuntime({ qualityCount, currentQuality });
       });
     }
 
@@ -567,6 +591,26 @@
       this.lastMuted = false;
       this.player?.unmute();
       this.PostStateToRuntime({ audioState: "unmuted" });
+    }
+
+    OnSetQuality(state: JSONObject) {
+      const level = state["level"];
+      console.log("[video player] Set quality requested", level);
+      if (typeof level !== "number") {
+        return;
+      }
+      const activePlayback = this.player?.player?.core?.activePlayback;
+      if (activePlayback === undefined || activePlayback === null) {
+        console.warn("[video player] Cannot set quality: activePlayback not available");
+        return;
+      }
+      if (activePlayback.currentLevel !== undefined) {
+        activePlayback.currentLevel = level;
+      }
+      // Post the updated currentQuality back to the runtime.
+      const currentQuality = activePlayback.currentLevel ?? -1;
+      this.lastReportedLevel = currentQuality;
+      this.PostStateToRuntime({ currentQuality });
     }
   }
 

@@ -24,6 +24,8 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	_currentPlaybackTime = 0;
 	_currentVolume = -1;
 	_duration = -1;
+	_currentQuality = -1;
+	_qualityCount = 0;
 
 	_playerState = "offline";
 	_audioState = "offline";
@@ -75,6 +77,8 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._currentPlaybackTime = 0;
 		this._currentVolume = -1;
 		this._duration = -1;
+		this._currentQuality = -1;
+		this._qualityCount = 0;
 
 		this._playerState = "offline";
 		this._audioState = "offline";
@@ -132,6 +136,14 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 				this._duration = state.duration as number;
 			}
 
+			if (state.currentQuality !== undefined) {
+				this._currentQuality = state.currentQuality as number;
+			}
+
+			if (state.qualityCount !== undefined) {
+				this._qualityCount = state.qualityCount as number;
+			}
+
 			// Mark the video as ready (loaded and playable) once its volume and
 			// duration are known.
 			if (!this._isReady && this._currentVolume > -1 && this._duration > -1) {
@@ -173,6 +185,10 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		} else {
 			this._postToDOMElement("unmute", null);
 		}
+	}
+
+	_SetQuality(level: number) {
+		this._postToDOMElement("setQuality", { level });
 	}
 
 	_GetState() {
@@ -274,7 +290,9 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 					{ name: prefix + "playerState", value: this._playerState },
 					{ name: prefix + "audioState", value: this._audioState },
 					{ name: prefix + "lastErrorCategory", value: this._lastError.category as string },
-					{ name: prefix + "lastErrorMessage", value: this._lastError.message as string }
+					{ name: prefix + "lastErrorMessage", value: this._lastError.message as string },
+					{ name: prefix + "currentQuality", value: this._currentQuality, onedit: v => this._SetQuality(v as number) },
+					{ name: prefix + "qualityCount", value: this._qualityCount }
 				]
 			},
 		];

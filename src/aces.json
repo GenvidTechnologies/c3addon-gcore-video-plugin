@@ -117,6 +117,16 @@
 						"type": "boolean"
 					}
 				]
+			},
+			{
+				"id": "set-quality",
+				"scriptName": "SetQuality",
+				"params": [
+					{
+						"id": "level",
+						"type": "number"
+					}
+				]
 			}
 		],
 		"expressions": [
@@ -163,6 +173,16 @@
 			{
 				"id": "no-low-latency",
 				"expressionName": "NoLowLatency",
+				"returnType": "number"
+			},
+			{
+				"id": "get-current-quality",
+				"expressionName": "GetCurrentQuality",
+				"returnType": "number"
+			},
+			{
+				"id": "get-quality-count",
+				"expressionName": "GetQualityCount",
 				"returnType": "number"
 			}
 		]

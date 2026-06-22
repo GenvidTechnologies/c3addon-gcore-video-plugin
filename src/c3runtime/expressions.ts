@@ -30,5 +30,11 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 	},
 	NoLowLatency(this:SDKInstanceClass) {
 		return this._GetNoLowLatency();
+	},
+	GetCurrentQuality(this:SDKInstanceClass) {
+		return this._currentQuality;
+	},
+	GetQualityCount(this:SDKInstanceClass) {
+		return this._qualityCount;
 	}
 };
