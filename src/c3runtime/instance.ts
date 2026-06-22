@@ -186,11 +186,11 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	}
 
 	_SetURL(url: string, subtitles: string, noLowLatency: boolean) {
+		// Empty string means "keep current subtitles" (Construct passes "" when the
+		// param is omitted); the boolean noLowLatency is always explicitly 0/1 from
+		// the ACE checkbox, so we must NOT fall back on falsy — false is a valid value.
 		if (subtitles === "") {
-			subtitles = this._subtitles
-		}
-		if (!noLowLatency) {
-			noLowLatency = this._noLowLatency
+			subtitles = this._subtitles;
 		}
 		if (this._url === url && this._subtitles === subtitles && this._noLowLatency === noLowLatency) {
 			return;

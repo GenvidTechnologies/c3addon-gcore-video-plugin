@@ -112,6 +112,7 @@
     // that we carry the mute/volume state across video changes.
     lastMuted: boolean;
     lastVolume: number;
+    noLowLatency: boolean;
     resizeObserver: ResizeObserver | null;
     controller: AbortController;
 
@@ -130,6 +131,7 @@
       this.playbackBaseline = -1;
       this.lastMuted = true;
       this.lastVolume = -1;
+      this.noLowLatency = false;
       this.resizeObserver = null;
       this.controller = new AbortController();
 
@@ -185,10 +187,10 @@
       // Subtitles are selected via the player's closed-caption tracks (not a URL
       // query param anymore — see ApplySubtitles).
       this.subtitleLang = (e["subtitles"] ?? "off") as string;
-      // noLowLatency no longer maps to a URL param under the v2 player; proper
-      // low-latency config is a follow-up (GitHub issue #1).
+      const noLowLatency = (e["noLowLatency"] ?? false) as boolean;
 
-      if (this.NeedsRebuild({ url })) {
+      if (this.NeedsRebuild({ url, noLowLatency })) {
+        this.noLowLatency = noLowLatency;
         this.currentUrl = url;
         if (url !== "") {
           console.debug("Loading", url);
@@ -207,31 +209,48 @@
     }
 
     // Central seam for deciding whether an incoming state update requires
-    // tearing down and rebuilding the player. Future config toggles (quality
-    // level, latency mode, etc.) extend this by adding fields to `next` and
-    // comparing them against current state here.
-    private NeedsRebuild(next: { url: string }): boolean {
-      return this.currentUrl !== next.url;
+    // tearing down and rebuilding the player. Construction-time config toggles
+    // (latency mode, etc.) extend this by adding fields to `next` and comparing
+    // them against current state here. Subtitle-only changes take the light path
+    // (no rebuild) — they are applied to the existing player via ApplySubtitles.
+    private NeedsRebuild(next: { url: string; noLowLatency: boolean }): boolean {
+      if (this.currentUrl !== next.url) return true;
+      // A noLowLatency change is construction-time config; only meaningful when a
+      // URL is set (no point rebuilding an idle player).
+      if (next.url !== "" && this.noLowLatency !== next.noLowLatency) return true;
+      return false;
     }
 
     // Constructs the config object passed to the Player constructor. Reads
-    // current instance state (e.g. lastMuted) and the resolved manifest URL.
-    // Extracted as a seam so future slices can layer construction-time config
-    // (quality, latency, etc.) in one place without touching CreatePlayer.
+    // current instance state (e.g. lastMuted, noLowLatency) and the resolved
+    // manifest URL. Extracted as a seam so construction-time config (quality,
+    // latency, etc.) is layered here without touching CreatePlayer.
     private BuildPlayerConfig(manifestUrl: string): unknown {
+      // hls.js config applied at construction time. lowLatencyMode is the
+      // verified-reliable knob for disabling HLS low-latency mode; the GCore
+      // playbackType/priorityTransport keys were evaluated but could not be
+      // confirmed to change behavior on a VOD stream (see docs/gcore-player-api.md).
+      // Full effect verification against a live low-latency stream is pending.
+      const hlsjsConfig: Record<string, unknown> = {
+        // The player defaults hls.js to non-native subtitle rendering, whose
+        // custom renderer doesn't display our selected track. Force native
+        // text-track rendering so the browser renders cues for the track we
+        // mark "showing" via closedCaptionsTrackId. hlsjsConfig takes priority.
+        renderTextTracksNatively: true,
+      };
+      if (this.noLowLatency) {
+        // Disable hls.js low-latency mode; set only when requested so the
+        // player default (true) is preserved for normal streams.
+        hlsjsConfig.lowLatencyMode = false;
+      }
+
       return {
         autoPlay: true,
         // Only the first autoplay needs forced mute; subsequent loads keep the
         // user's mute state.
         mute: this.lastMuted,
         sources: [{ source: manifestUrl, mimeType: this.GetMimeType(manifestUrl) }],
-        playback: {
-          // The player defaults hls.js to non-native subtitle rendering, whose
-          // custom renderer doesn't display our selected track. Force native
-          // text-track rendering so the browser renders cues for the track we
-          // mark "showing" via closedCaptionsTrackId. hlsjsConfig takes priority.
-          hlsjsConfig: { renderTextTracksNatively: true },
-        },
+        playback: { hlsjsConfig },
       };
     }
 
