@@ -183,6 +183,17 @@
 							}
 						}
 					},
+					"set-fallback-urls": {
+						"list-name": "Set Fallback URLs",
+						"display-text": "Set fallback source URLs to {0}",
+						"description": "Set a comma- or newline-separated list of fallback source URLs. The player will try these in order if the primary URL is unreachable.",
+						"params": {
+							"urls": {
+								"name": "URLs",
+								"desc": "Comma- or newline-separated list of fallback source URLs."
+							}
+						}
+					},
 					"resize": {
 						"list-name": "Resize",
 						"display-text": "Resize player to container",
@@ -255,7 +266,8 @@
 					"lastErrorCategory": "Last Error Category",
 					"lastErrorMessage": "Last Error Message",
 					"currentQuality": "Current Quality Level",
-					"qualityCount": "Quality Level Count"
+					"qualityCount": "Quality Level Count",
+					"fallbackUrls": "Fallback URL Count"
 				}
 			}
 		}

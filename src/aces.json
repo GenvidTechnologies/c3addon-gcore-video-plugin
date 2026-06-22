@@ -139,6 +139,16 @@
 				]
 			},
 			{
+				"id": "set-fallback-urls",
+				"scriptName": "SetFallbackURLs",
+				"params": [
+					{
+						"id": "urls",
+						"type": "string"
+					}
+				]
+			},
+			{
 				"id": "resize",
 				"scriptName": "Resize"
 			}

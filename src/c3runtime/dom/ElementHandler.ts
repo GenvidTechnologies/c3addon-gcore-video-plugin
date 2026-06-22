@@ -130,6 +130,7 @@
     lastVolume: number;
     noLowLatency: boolean;
     enableChrome: boolean;
+    fallbackUrls: string[];
     // Track the last quality level reported to the runtime so we only post
     // currentQuality on a TimeUpdate when it actually changed (no quality event).
     lastReportedLevel: number;
@@ -153,6 +154,7 @@
       this.lastVolume = -1;
       this.noLowLatency = false;
       this.enableChrome = false;
+      this.fallbackUrls = [];
       this.lastReportedLevel = -2; // sentinel: "not yet reported"
       this.resizeObserver = null;
       this.controller = new AbortController();
@@ -211,9 +213,11 @@
       this.subtitleLang = (e["subtitles"] ?? "off") as string;
       const noLowLatency = (e["noLowLatency"] ?? false) as boolean;
       this.enableChrome = (e["enableChrome"] ?? false) as boolean;
+      const fallbackUrls = (e["fallbackUrls"] ?? []) as string[];
 
-      if (this.NeedsRebuild({ url, noLowLatency })) {
+      if (this.NeedsRebuild({ url, noLowLatency, fallbackUrls })) {
         this.noLowLatency = noLowLatency;
+        this.fallbackUrls = fallbackUrls;
         this.currentUrl = url;
         if (url !== "") {
           console.debug("Loading", url);
@@ -238,19 +242,22 @@
     // (latency mode, etc.) extend this by adding fields to `next` and comparing
     // them against current state here. Subtitle-only changes take the light path
     // (no rebuild) — they are applied to the existing player via ApplySubtitles.
-    private NeedsRebuild(next: { url: string; noLowLatency: boolean }): boolean {
+    private NeedsRebuild(next: { url: string; noLowLatency: boolean; fallbackUrls: string[] }): boolean {
       if (this.currentUrl !== next.url) return true;
-      // A noLowLatency change is construction-time config; only meaningful when a
-      // URL is set (no point rebuilding an idle player).
-      if (next.url !== "" && this.noLowLatency !== next.noLowLatency) return true;
+      // Construction-time config changes below are only meaningful when a URL is
+      // set (no point rebuilding an idle player).
+      if (next.url !== "") {
+        if (this.noLowLatency !== next.noLowLatency) return true;
+        if (JSON.stringify(this.fallbackUrls) !== JSON.stringify(next.fallbackUrls)) return true;
+      }
       return false;
     }
 
     // Constructs the config object passed to the Player constructor. Reads
-    // current instance state (e.g. lastMuted, noLowLatency) and the resolved
-    // manifest URL. Extracted as a seam so construction-time config (quality,
+    // current instance state (e.g. lastMuted, noLowLatency) and the pre-resolved
+    // sources array. Extracted as a seam so construction-time config (quality,
     // latency, etc.) is layered here without touching CreatePlayer.
-    private BuildPlayerConfig(manifestUrl: string): unknown {
+    private BuildPlayerConfig(sources: Array<{ source: string; mimeType: string }>): unknown {
       // hls.js config applied at construction time. lowLatencyMode is the
       // verified-reliable knob for disabling HLS low-latency mode; the GCore
       // playbackType/priorityTransport keys were evaluated but could not be
@@ -274,7 +281,7 @@
         // Only the first autoplay needs forced mute; subsequent loads keep the
         // user's mute state.
         mute: this.lastMuted,
-        sources: [{ source: manifestUrl, mimeType: this.GetMimeType(manifestUrl) }],
+        sources,
         playback: { hlsjsConfig },
       };
     }
@@ -297,9 +304,21 @@
         return;
       }
 
-      let manifestUrl: string;
+      // Resolve the primary URL and all fallback URLs concurrently. The primary
+      // must succeed; fallback resolution failures are swallowed so a bad
+      // fallback URL doesn't block the primary from loading.
+      const allUrls = [url, ...this.fallbackUrls];
+      let resolved: string[];
       try {
-        manifestUrl = await this.ResolveManifest(url);
+        resolved = await Promise.all(
+          allUrls.map((u, i) =>
+            this.ResolveManifest(u).catch((err) => {
+              if (i === 0) throw err; // primary failure is fatal
+              console.warn("[video player] Failed to resolve fallback manifest", u, err);
+              return null as unknown as string;
+            })
+          )
+        );
       } catch (err) {
         console.error("[video player] Failed to resolve manifest", err);
         this.PostErrorToRuntime("gcore", `Could not resolve video manifest: ${err}`);
@@ -312,13 +331,19 @@
         return;
       }
 
+      // Build the sources array from successfully-resolved URLs (skip nulls from
+      // failed fallback resolutions).
+      const sources = resolved
+        .filter((s): s is string => s != null)
+        .map((s) => ({ source: s, mimeType: this.GetMimeType(s) }));
+
       this.DestroyPlayer();
 
       // Reset playback-stability tracking for the new video.
       this.playbackStable = false;
       this.playbackBaseline = -1;
 
-      const player = new Player(this.BuildPlayerConfig(manifestUrl));
+      const player = new Player(this.BuildPlayerConfig(sources));
       this.player = player;
       this.RegisterEvents(player);
       player.attachTo(this.element);
@@ -329,7 +354,7 @@
       this.resizeObserver?.disconnect();
       this.resizeObserver = new ResizeObserver(() => this.ResizePlayer());
       this.resizeObserver.observe(this.element);
-      console.log("Player created", player, "manifest:", manifestUrl);
+      console.log("Player created", player, "sources:", sources);
     }
 
     ResizePlayer() {

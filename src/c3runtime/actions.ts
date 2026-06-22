@@ -33,6 +33,9 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	SetEnableChrome(this:SDKInstanceClass, enable: boolean) {
 		this._SetEnableChrome(enable);
 	},
+	SetFallbackURLs(this:SDKInstanceClass, urls: string) {
+		this._SetFallbackURLs(urls);
+	},
 	Resize(this: SDKInstanceClass) {
 		this._Resize();
 	}
