@@ -458,9 +458,12 @@
       player.on(PlayerEvent.VolumeUpdate, () => {
         // Remember the latest audio state so it carries to the next video.
         this.lastMuted = player.isMuted();
-        this.lastVolume = player.getVolume();
+        // player API is 0..100 (docs/gcore-player-api.md A3); convert to 0..1
+        // for the runtime/ACE layer. lastVolume is kept in 0..1 units.
+        this.lastVolume = player.getVolume() / 100;
         this.PostStateToRuntime({
-          currentVolume: player.getVolume(),
+          // player API is 0..100; divide by 100 to report 0..1 to the runtime.
+          currentVolume: player.getVolume() / 100,
           audioState: player.isMuted() ? "muted" : "unmuted",
         });
       });
@@ -473,8 +476,10 @@
       player.on(PlayerEvent.Ready, () => {
         console.log("[video player]", "Ready");
         // Restore the prior volume level on a subsequent (unmuted) load.
+        // lastVolume is in 0..1; multiply by 100 because the player API is
+        // 0..100 (docs/gcore-player-api.md A3).
         if (!this.lastMuted && this.lastVolume >= 0) {
-          player.setVolume(this.lastVolume);
+          player.setVolume(this.lastVolume * 100);
         }
         this.PostPlaybackInfo(player);
         // Subtitle tracks are known once the manifest is parsed (by Ready).
@@ -488,7 +493,9 @@
     // distinguish "muted" from "volume happens to be 0".
     PostPlaybackInfo(player: GCorePlayer) {
       const state: JSONObject = {
-        currentVolume: player.getVolume(),
+        // player API is 0..100 (docs/gcore-player-api.md A3); divide by 100
+        // to report 0..1 to the runtime/ACE layer.
+        currentVolume: player.getVolume() / 100,
         audioState: player.isMuted() ? "muted" : "unmuted",
       };
       const duration = player.getDuration();
@@ -541,8 +548,10 @@
       const volume = state["requestedVolume"];
       console.log("[video player] Set volume requested", volume);
       if (typeof volume === "number") {
+        // ACE/runtime value is 0..1; keep lastVolume in 0..1 units.
         this.lastVolume = volume;
-        this.player?.setVolume(volume);
+        // player API is 0..100 (docs/gcore-player-api.md A3); multiply by 100.
+        this.player?.setVolume(volume * 100);
       }
     }
 
