@@ -14,7 +14,8 @@
     "typescript-eslint": "^8.31.0"
   },
   "scripts": {
-    "lint": "eslint src",
+    "lint": "eslint src && npm run validate:aces",
+    "validate:aces": "node scripts/validate-aces.mjs",
     "build": "tsc -p src --outDir dist",
     "postbuild": "shx cp src/*.{json,svg} dist/ && shx mkdir -p dist/lang && shx cp src/lang/*.json dist/lang && shx rm dist/tsconfig.json",
     "watch": "tsc -p src --outDir dist -w",

@@ -13,11 +13,23 @@ breaking changes.
 
 ## To develop
 
+Build first (`npm run build`, or `npm run watch` to rebuild on change), then
+serve the compiled `dist/` as a Construct **developer addon**:
+
 ```bash
-npx http-server src --cors
+npm run devmode   # http-server dist --cors
 ```
 
-Because of the restricted CSP in Construct3, make sure to use http://localhost:8080/addon.json instead of 127.0.0.1.
+Add it in Construct via *Menu → View → Addon Manager → Install new addon →
+Developer mode* pointing at `http://localhost:8080/addon.json`. Because of the
+restricted CSP in Construct 3, use `http://localhost:8080/...` (not `127.0.0.1`).
+
+> **Picking up code changes:** a developer addon reloads when you reload the
+> Construct tab after a rebuild. For a **packaged** (`.c3addon`) install, Construct
+> does **not** hot-swap a rebuilt addon — you must **remove the addon and
+> re-import** the freshly built `.c3addon` (and reload), even if the version
+> number is unchanged. If a change "isn't taking effect," this is almost always
+> why.
 
 ## To build
 
