@@ -3,6 +3,7 @@
 	"plugin-id": "Genvidtech_GCoreVideoPlugin",
 	"sid": 985891283165037,
 	"isGlobal": false,
+	"editorNewInstanceIsReplica": true,
 	"instanceVariables": [],
 	"behaviorTypes": []
 }

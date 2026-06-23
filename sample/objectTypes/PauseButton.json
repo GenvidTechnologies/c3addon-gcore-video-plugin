@@ -3,6 +3,7 @@
 	"plugin-id": "Button",
 	"sid": 312294636369629,
 	"isGlobal": false,
+	"editorNewInstanceIsReplica": true,
 	"instanceVariables": [],
 	"behaviorTypes": []
 }

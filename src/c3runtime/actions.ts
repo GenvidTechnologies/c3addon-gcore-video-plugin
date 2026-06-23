@@ -18,13 +18,36 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	SetVolume(this:SDKInstanceClass, level: number) {
 		this._SetVolume(level);
 	},
-	SetURL(this:SDKInstanceClass, url: string, subtitles: string, noLowLatency: boolean) {
-		this._SetURL(url, subtitles, noLowLatency);
+	SetURL(this:SDKInstanceClass, url: string, noLowLatency: boolean) {
+		this._SetURL(url, noLowLatency);
 	},
 	SetSubtitles(this:SDKInstanceClass, language: string) {
 		this._SetSubtitles(language);
 	},
 	SetNoLowLatency(this:SDKInstanceClass, noLowLatency: boolean) {
 		this._SetNoLowLatency(noLowLatency);
+	},
+	SetQuality(this:SDKInstanceClass, level: number) {
+		this._SetQuality(level);
+	},
+	SetEnableChrome(this:SDKInstanceClass, enable: boolean) {
+		this._SetEnableChrome(enable);
+	},
+	SetFallbackURLs(this:SDKInstanceClass, urls: string) {
+		this._SetFallbackURLs(urls);
+	},
+	AddSubtitleSource(this:SDKInstanceClass, url: string, language: string, label: string) {
+		this._AddSubtitleSource(url, language, label);
+	},
+	AddProjectSubtitleSource(this:SDKInstanceClass, file: string, language: string, label: string) {
+		// Async action (aces.json isAsync) — return the promise so Construct waits
+		// for the project file URL to resolve before continuing.
+		return this._AddProjectSubtitleSource(file, language, label);
+	},
+	Resize(this: SDKInstanceClass) {
+		this._Resize();
+	},
+	SetEnableDVR(this: SDKInstanceClass, enable: boolean) {
+		this._SetEnableDVR(enable);
 	}
 };

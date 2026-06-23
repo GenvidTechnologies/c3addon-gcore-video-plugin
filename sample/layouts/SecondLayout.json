@@ -24,6 +24,8 @@
 					"tags": "",
 					"instanceVariables": {},
 					"behaviors": {},
+					"showing": true,
+					"locked": false,
 					"world": {
 						"x": 42,
 						"y": 530,
@@ -44,7 +46,9 @@
 					"properties": {
 						"video-url": "https://player.gvideo.co/videos/421804_JUpVsXgbH6ky2vAW",
 						"video-subtitles": "off",
-						"no-low-latency": false
+						"no-low-latency": false,
+						"enable-chrome": false,
+						"enable-dvr": true
 					},
 					"uid": 4,
 					"sid": 412574724367276,
@@ -55,6 +59,8 @@
 							"properties": {}
 						}
 					},
+					"showing": true,
+					"locked": false,
 					"world": {
 						"x": 30,
 						"y": 158,
@@ -89,6 +95,7 @@
 				1
 			],
 			"isTransparent": false,
+			"sampling": "auto",
 			"parallaxX": 1,
 			"parallaxY": 1,
 			"scaleRate": 1,
@@ -111,6 +118,7 @@
 	"width": 960,
 	"height": 1708,
 	"unboundedScrolling": false,
+	"sampling": "auto",
 	"vpX": 0.5,
 	"vpY": 0.5,
 	"projection": "perspective",

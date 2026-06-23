@@ -39,6 +39,39 @@
 			{
 				"id": "is-offline",
 				"scriptName": "IsOffline"
+			},
+			{
+				"id": "is-dvr",
+				"scriptName": "IsDVR"
+			},
+			{
+				"id": "has-subtitles",
+				"scriptName": "HasSubtitles"
+			},
+			{
+				"id": "has-subtitle-language",
+				"scriptName": "HasSubtitleLanguage",
+				"params": [
+					{
+						"id": "lang",
+						"type": "string"
+					}
+				]
+			},
+			{
+				"id": "has-subtitle-label",
+				"scriptName": "HasSubtitleLabel",
+				"params": [
+					{
+						"id": "label",
+						"type": "string"
+					}
+				]
+			},
+			{
+				"id": "on-subtitles-available",
+				"scriptName": "OnSubtitlesAvailable",
+				"isTrigger": true
 			}
 		],
 		"actions": [
@@ -89,10 +122,6 @@
 						"type": "string"
 					},
 					{
-						"id": "subtitles",
-						"type": "string"
-					},
-					{
 						"id": "no-low-latency",
 						"type": "boolean"
 					}
@@ -114,6 +143,87 @@
 				"params": [
 					{
 						"id": "noLowLatency",
+						"type": "boolean"
+					}
+				]
+			},
+			{
+				"id": "set-quality",
+				"scriptName": "SetQuality",
+				"params": [
+					{
+						"id": "level",
+						"type": "number"
+					}
+				]
+			},
+			{
+				"id": "set-enable-chrome",
+				"scriptName": "SetEnableChrome",
+				"params": [
+					{
+						"id": "enable",
+						"type": "boolean"
+					}
+				]
+			},
+			{
+				"id": "set-fallback-urls",
+				"scriptName": "SetFallbackURLs",
+				"params": [
+					{
+						"id": "urls",
+						"type": "string"
+					}
+				]
+			},
+			{
+				"id": "add-subtitle-source",
+				"scriptName": "AddSubtitleSource",
+				"params": [
+					{
+						"id": "url",
+						"type": "string"
+					},
+					{
+						"id": "language",
+						"type": "string"
+					},
+					{
+						"id": "label",
+						"type": "string"
+					}
+				]
+			},
+			{
+				"id": "add-project-subtitle-source",
+				"scriptName": "AddProjectSubtitleSource",
+				"isAsync": true,
+				"params": [
+					{
+						"id": "file",
+						"type": "projectfile"
+					},
+					{
+						"id": "language",
+						"type": "string"
+					},
+					{
+						"id": "label",
+						"type": "string"
+					}
+				]
+			},
+			{
+				"id": "resize",
+				"scriptName": "Resize"
+			},
+			{
+				"id": "set-enable-dvr",
+				"scriptName": "SetEnableDVR",
+				"params": [
+					{
+						"id": "enable",
 						"type": "boolean"
 					}
 				]
@@ -164,6 +274,58 @@
 				"id": "no-low-latency",
 				"expressionName": "NoLowLatency",
 				"returnType": "number"
+			},
+			{
+				"id": "get-enable-chrome",
+				"expressionName": "GetEnableChrome",
+				"returnType": "number"
+			},
+			{
+				"id": "get-current-quality",
+				"expressionName": "GetCurrentQuality",
+				"returnType": "number"
+			},
+			{
+				"id": "get-quality-count",
+				"expressionName": "GetQualityCount",
+				"returnType": "number"
+			},
+			{
+				"id": "get-seekable-start",
+				"expressionName": "GetSeekableStart",
+				"returnType": "number"
+			},
+			{
+				"id": "get-seekable-end",
+				"expressionName": "GetSeekableEnd",
+				"returnType": "number"
+			},
+			{
+				"id": "get-subtitle-count",
+				"expressionName": "GetSubtitleCount",
+				"returnType": "number"
+			},
+			{
+				"id": "get-subtitle-language-at",
+				"expressionName": "GetSubtitleLanguageAt",
+				"returnType": "string",
+				"params": [
+					{
+						"id": "index",
+						"type": "number"
+					}
+				]
+			},
+			{
+				"id": "get-subtitle-label-at",
+				"expressionName": "GetSubtitleLabelAt",
+				"returnType": "string",
+				"params": [
+					{
+						"id": "index",
+						"type": "number"
+					}
+				]
 			}
 		]
 	}

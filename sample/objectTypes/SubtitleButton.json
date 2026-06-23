@@ -1,0 +1,17 @@
+{
+	"name": "SubtitleButton",
+	"plugin-id": "Button",
+	"sid": 359343357806349,
+	"isGlobal": false,
+	"editorNewInstanceIsReplica": true,
+	"instanceVariables": [
+		{
+			"name": "lang",
+			"type": "string",
+			"desc": "",
+			"show": true,
+			"sid": 508724781609294
+		}
+	],
+	"behaviorTypes": []
+}

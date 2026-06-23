@@ -1,6 +1,6 @@
 {
 	"projectFormatVersion": 1,
-	"savedWithRelease": 40702,
+	"savedWithRelease": 47604,
 	"name": "Genvid GCore Video Plugin Sample",
 	"runtime": "c3",
 	"useWorker": "worker",
@@ -19,7 +19,8 @@
 			"name": "GCore Video Plugin",
 			"author": "Genvid Technologies LLC",
 			"bundled": false,
-			"version": "1.1.0.1"
+			"version": "2.0.0.0",
+			"sdkVersion": 2
 		},
 		{
 			"type": "plugin",
@@ -65,7 +66,7 @@
 			"DurationText",
 			"VolumeButton2",
 			"VolumeText",
-			"EnglishButton",
+			"SubtitleButton",
 			"NoSubButton",
 			"GCoreVideoPlugin",
 			"ErrorText",
@@ -78,6 +79,7 @@
 		],
 		"subfolders": []
 	},
+	"functionsName": "Functions",
 	"autosaveData": null,
 	"containers": [],
 	"families": {
@@ -181,7 +183,16 @@
 			"subfolders": []
 		},
 		"general": {
-			"items": [],
+			"items": [
+				{
+					"name": "01_ARGUS_FR.vtt",
+					"type": "application/octet-stream",
+					"sid": 533785233283248,
+					"file-info": {
+						"purpose": "none"
+					}
+				}
+			],
 			"subfolders": []
 		}
 	},
@@ -200,9 +211,14 @@
 		"items": [],
 		"subfolders": []
 	},
+	"models3d": {
+		"items": [],
+		"subfolders": []
+	},
 	"properties": {
 		"description": "GCore Video Plugin Sample integration",
-		"version": "1.1.0.1",
+		"version": "2.0.0.0",
+		"autoIncrementVersion": false,
 		"author": "Genvid Technologies, LLC",
 		"authorEmail": "support@genvidtech.com",
 		"authorWebsite": "https://github.com/genvid-holdings/c3addon-gcore-video-plugin",
@@ -235,9 +251,10 @@
 		],
 		"orientations": "any",
 		"webgpu": "auto",
+		"multitexturing": "auto",
 		"gpuPreference": "high-performance",
-		"scriptsType": "module",
 		"framerateMode": "vsync",
+		"fixedFramerate": 30,
 		"sampling": "trilinear",
 		"downscaling": "medium",
 		"renderingMode": "auto",
@@ -247,11 +264,11 @@
 		"maxSpriteSheetSize": 2048,
 		"loaderStyle": "splash",
 		"preloadSounds": true,
+		"uidAllocationMode": "increment",
 		"cordovaiOSScheme": "app",
 		"cordovaAndroidScheme": "https",
-		"autoReloadScriptsOnPreview": false,
 		"exportFileStructure": "folders",
-		"uidAllocationMode": "increment"
+		"scriptsType": "module"
 	},
 	"viewportWidth": 1000,
 	"viewportHeight": 1000,

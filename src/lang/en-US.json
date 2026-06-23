@@ -20,6 +20,14 @@
 					"no-low-latency": {
 						"name": "No low latency flag",
 						"desc": "No low latency flag. Intended to be used by live stream."
+					},
+					"enable-chrome": {
+						"name": "Enable Chrome",
+						"desc": "Show the GCore MediaControl control bar (player built-in UI). Off by default; hosts typically provide their own UI."
+					},
+					"enable-dvr": {
+						"name": "Enable DVR",
+						"desc": "Enable DVR mode (seekable live window). Sets playbackType: 'dvr' on the player config. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
 					}
 				},
 				"aceCategories": {
@@ -70,6 +78,43 @@
 						"list-name": "Is offline",
 						"display-text": "Is offline",
 						"description": "Whether the video player is offline or not"
+					},
+					"is-dvr": {
+						"list-name": "Is DVR",
+						"display-text": "Is DVR",
+						"description": "Whether the current stream is a DVR (seekable live) stream. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
+					},
+					"has-subtitles": {
+						"list-name": "Has subtitles",
+						"display-text": "Has subtitles",
+						"description": "Whether any subtitle tracks are available (in-manifest or side-loaded)."
+					},
+					"has-subtitle-language": {
+						"list-name": "Has subtitle language",
+						"display-text": "Has subtitle language {0}",
+						"description": "Whether a subtitle track with the given language is available (case-insensitive).",
+						"params": {
+							"lang": {
+								"name": "Language",
+								"desc": "BCP-47 language code to look for (e.g. \"en\", \"fr\", \"en-ext\")."
+							}
+						}
+					},
+					"has-subtitle-label": {
+						"list-name": "Has subtitle label",
+						"display-text": "Has subtitle label {0}",
+						"description": "Whether a subtitle track with the given label is available (case-insensitive).",
+						"params": {
+							"label": {
+								"name": "Label",
+								"desc": "Subtitle track label to look for (e.g. \"English\")."
+							}
+						}
+					},
+					"on-subtitles-available": {
+						"list-name": "On subtitles available",
+						"display-text": "On subtitles available",
+						"description": "Triggered when the subtitle track list becomes known or changes."
 					}
 				},
 				"actions": {
@@ -118,16 +163,12 @@
 					},
 					"set-url": {
 						"list-name": "Load Video",
-						"display-text": "Load video at {0} with language {1} with no low latency flag {2}",
-						"description": "Set the Video Player URL.",
+						"display-text": "Load video at {0} with no low latency flag {1}",
+						"description": "Set the Video Player URL. Loading a video clears the current subtitle selection and any side-loaded subtitle sources; use Set Subtitles / Add Subtitle Source afterwards.",
 						"params": {
 							"url": {
 								"name": "URL",
 								"desc": "The URL to load"
-							},
-							"subtitles": {
-								"name": "Subtitles",
-								"desc": "The subtitles language to use. 'off' to disable, leave empty to keep the current setting."
 							},
 							"no-low-latency": {
 								"name": "No low latency flag",
@@ -154,6 +195,93 @@
 							"noLowLatency": {
 								"name": "No Low Latency Flag",
 								"desc": "No low latency flag."
+							}
+						}
+					},
+					"set-quality": {
+						"list-name": "Set Quality",
+						"display-text": "Set quality level to {0}",
+						"description": "Set the ABR quality level. -1 = auto/ABR, otherwise the level index.",
+						"params": {
+							"level": {
+								"name": "Level",
+								"desc": "Quality level index. -1 = auto/ABR, otherwise the level index from GetQualityCount."
+							}
+						}
+					},
+					"set-enable-chrome": {
+						"list-name": "Set Enable Chrome",
+						"display-text": "Set player built-in control bar (chrome) enabled to {0}",
+						"description": "Show or hide the GCore MediaControl control bar. This is a live change and does not require a player rebuild.",
+						"params": {
+							"enable": {
+								"name": "Enable",
+								"desc": "True to show the built-in control bar; false to hide it."
+							}
+						}
+					},
+					"set-fallback-urls": {
+						"list-name": "Set Fallback URLs",
+						"display-text": "Set fallback source URLs to {0}",
+						"description": "Set a comma- or newline-separated list of fallback source URLs. The player will try these in order if the primary URL is unreachable.",
+						"params": {
+							"urls": {
+								"name": "URLs",
+								"desc": "Comma- or newline-separated list of fallback source URLs."
+							}
+						}
+					},
+					"add-subtitle-source": {
+						"list-name": "Add Subtitle Source",
+						"display-text": "Add subtitle source {0} (language {1}, label {2})",
+						"description": "Add an external subtitle track (by URL) to the player, injected alongside any in-manifest tracks. Call AFTER Load Video (loading a video clears side-loaded sources); then select it with Set Subtitles using its language.",
+						"params": {
+							"url": {
+								"name": "URL",
+								"desc": "URL of the external subtitle file (e.g. a .vtt file)."
+							},
+							"language": {
+								"name": "Language",
+								"desc": "BCP-47 language code for the track (e.g. \"en\", \"fr\"). Use a tag distinct from the in-manifest tracks (e.g. \"en-ext\")."
+							},
+							"label": {
+								"name": "Label",
+								"desc": "Human-readable label shown in the subtitle selector (e.g. \"English\")."
+							}
+						}
+					},
+					"add-project-subtitle-source": {
+						"list-name": "Add Project Subtitle Source",
+						"display-text": "Add project subtitle source {0} (language {1}, label {2})",
+						"description": "Add an external subtitle track from a project file. The file is resolved to a URL at runtime, then injected like Add Subtitle Source. Call AFTER Load Video; select it with Set Subtitles using its language.",
+						"params": {
+							"file": {
+								"name": "Project file",
+								"desc": "Name of the subtitle project file (e.g. \"subtitles.vtt\")."
+							},
+							"language": {
+								"name": "Language",
+								"desc": "BCP-47 language code for the track (e.g. \"en\", \"fr\"). Use a tag distinct from the in-manifest tracks (e.g. \"en-ext\")."
+							},
+							"label": {
+								"name": "Label",
+								"desc": "Human-readable label shown in the subtitle selector (e.g. \"English\")."
+							}
+						}
+					},
+					"resize": {
+						"list-name": "Resize",
+						"display-text": "Resize player to container",
+						"description": "Re-sync the player dimensions to its container. The player is automatically resized via ResizeObserver; use this action when an immediate manual re-sync is needed."
+					},
+					"set-enable-dvr": {
+						"list-name": "Set Enable DVR",
+						"display-text": "Set DVR mode enabled to {0}",
+						"description": "Enable or disable DVR mode (seekable live window). Requires a player rebuild to take effect. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"params": {
+							"enable": {
+								"name": "Enable",
+								"desc": "True to enable DVR mode; false to disable it."
 							}
 						}
 					}
@@ -194,6 +322,50 @@
 					"no-low-latency": {
 						"description": "The no low latency flag for the video.",
 						"translated-name": "NoLowLatency"
+					},
+					"get-enable-chrome": {
+						"description": "Whether the GCore MediaControl control bar (player built-in UI) is enabled.",
+						"translated-name": "GetEnableChrome"
+					},
+					"get-current-quality": {
+						"description": "The current ABR quality level index. -1 = auto/ABR.",
+						"translated-name": "GetCurrentQuality"
+					},
+					"get-quality-count": {
+						"description": "The number of available ABR quality levels.",
+						"translated-name": "GetQualityCount"
+					},
+					"get-seekable-start": {
+						"description": "The start of the DVR seekable window (seconds). 0 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"translated-name": "GetSeekableStart"
+					},
+					"get-seekable-end": {
+						"description": "The end of the DVR seekable window (seconds). -1 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"translated-name": "GetSeekableEnd"
+					},
+					"get-subtitle-count": {
+						"description": "The number of available subtitle tracks (in-manifest + side-loaded).",
+						"translated-name": "GetSubtitleCount"
+					},
+					"get-subtitle-language-at": {
+						"description": "The language code of the subtitle track at the given index.",
+						"translated-name": "GetSubtitleLanguageAt",
+						"params": {
+							"index": {
+								"name": "Index",
+								"desc": "Zero-based index into the subtitle track list (0 to GetSubtitleCount-1)."
+							}
+						}
+					},
+					"get-subtitle-label-at": {
+						"description": "The human-readable label of the subtitle track at the given index.",
+						"translated-name": "GetSubtitleLabelAt",
+						"params": {
+							"index": {
+								"name": "Index",
+								"desc": "Zero-based index into the subtitle track list (0 to GetSubtitleCount-1)."
+							}
+						}
 					}
 				},
 				"debugger": {
@@ -201,6 +373,7 @@
 					"url": "Base URL",
 					"subtitles": "Subtitles",
 					"noLowLatency": "Disable Low Latency",
+					"enableChrome": "Enable Chrome (Control Bar)",
 					"isInitialized": "Initialized",
 					"isReady": "Ready",
 					"playbackTime": "Playback Time",
@@ -209,7 +382,16 @@
 					"playerState": "Player State",
 					"audioState": "Audio State",
 					"lastErrorCategory": "Last Error Category",
-					"lastErrorMessage": "Last Error Message"
+					"lastErrorMessage": "Last Error Message",
+					"currentQuality": "Current Quality Level",
+					"qualityCount": "Quality Level Count",
+					"fallbackUrls": "Fallback URL Count",
+					"subtitleSources": "External Subtitle Source Count",
+					"enableDvr": "Enable DVR",
+					"isDvr": "Is DVR Stream",
+					"seekableStart": "DVR Seekable Start",
+					"seekableEnd": "DVR Seekable End",
+					"subtitleTracks": "Subtitle Track Count"
 				}
 			}
 		}

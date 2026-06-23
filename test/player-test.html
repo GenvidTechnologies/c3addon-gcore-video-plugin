@@ -8,10 +8,15 @@
     body { font-family: system-ui, sans-serif; margin: 1rem; }
     #player { width: 640px; height: 360px; background: #000; position: relative; }
     #log { white-space: pre-wrap; background: #111; color: #5f5; padding: .5rem;
-           height: 240px; overflow: auto; font-family: monospace; font-size: 12px; }
+           height: 300px; overflow: auto; font-family: monospace; font-size: 12px; }
     button { margin: 2px; }
     .row { margin: .5rem 0; }
+    .probe-section { border-left: 3px solid #4af; margin: .5rem 0; padding: .25rem 0 .25rem .5rem; }
+    .probe-section h3 { margin: 0 0 .25rem; font-size: .9rem; color: #4af; }
     input[type=text] { width: 60ch; }
+    input[type=text].narrow { width: 20ch; }
+    label { margin-right: .5rem; }
+    #log-clear { float: right; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -21,6 +26,7 @@
      GCore embed URL <em>or</em> a direct <code>master.m3u8</code>, click
      <b>Load</b>, then pick a subtitle language.</p>
 
+  <!-- ── Main URL + Load ─────────────────────────────────────────────── -->
   <div class="row">
     <input id="url" type="text"
       value="https://421804.gvideo.io/videos/421804_aRXqc20sxTTLovVV/master.m3u8" />
@@ -29,6 +35,7 @@
 
   <div id="player"></div>
 
+  <!-- ── Subtitles (existing) ────────────────────────────────────────── -->
   <div class="row">
     <b>Subtitles:</b> <span id="controls">(load a video first)</span>
     <button id="off">OFF</button>
@@ -39,6 +46,86 @@
     <button id="dumpvideo">Dump &lt;video&gt;.textTracks (+cues)</button>
   </div>
 
+  <!-- ── A3: Volume units ────────────────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>A3 – Volume units (are they 0..1 or 0..100?)</h3>
+    <div class="row">
+      <button id="vol0">setVolume(0)</button>
+      <button id="vol05">setVolume(0.5)</button>
+      <button id="vol1">setVolume(1)</button>
+      <button id="getvol">getVolume</button>
+    </div>
+  </div>
+
+  <!-- ── A4: In-manifest subtitles ───────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>A4 – In-manifest CC tracks (no ?sub_lang= on the URL)</h3>
+    <div class="row">
+      <button id="dumpcc2">Dump CC tracks</button>
+    </div>
+  </div>
+
+  <!-- ── A5: Low-latency transport ───────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>A5 – Low-latency / playback config</h3>
+    <div class="row">
+      <label>playbackType: <input id="playbackType" type="text" class="narrow" placeholder="e.g. live" /></label>
+      <label>priorityTransport: <input id="priorityTransport" type="text" class="narrow" placeholder="e.g. llhls" /></label>
+      <button id="reloadPlayback">Reload with playback config</button>
+    </div>
+  </div>
+
+  <!-- ── A6: DVR window ──────────────────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>A6 – DVR window</h3>
+    <div class="row">
+      <button id="probeDvr">Probe DVR</button>
+      <label>Alt stream URL (DVR/live):
+        <input id="altUrl" type="text" class="narrow" placeholder="https://…/master.m3u8" />
+      </label>
+      <button id="loadAlt">Load alt URL</button>
+    </div>
+  </div>
+
+  <!-- ── A7: Chrome plugins ──────────────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>A7 – Chrome plugins (BottomGear, Spinner, etc.)</h3>
+    <div class="row">
+      <label><input id="registerChrome" type="checkbox" /> register BottomGear + Spinner on next load</label>
+    </div>
+  </div>
+
+  <!-- ── A8: Quality levels ──────────────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>A8 – Quality levels</h3>
+    <div class="row">
+      <button id="probeLevels">Probe levels</button>
+      <button id="setLevel0">set level 0</button>
+      <button id="setLevelAuto">set level auto (-1)</button>
+    </div>
+  </div>
+
+  <!-- ── D4: External (side-loaded) subtitles ────────────────────────── -->
+  <div class="probe-section">
+    <h3>D4 – External subtitle source (side-loaded VTT)</h3>
+    <div class="row">
+      <label>VTT URL: <input id="extVtt" type="text"
+        value="https://421804.gvideo.io/videos/421804_aRXqc20sxTTLovVV/segment-15-s0q234033v1.vtt" /></label>
+    </div>
+    <div class="row">
+      <label>lang: <input id="extLang" type="text" class="narrow" value="en-ext" /></label>
+      <label>field:
+        <select id="extField"><option value="lang">lang</option><option value="srclang">srclang</option></select>
+      </label>
+      <button id="reloadExt">Reload with external track</button>
+      <button id="dumpExt">Dump cc + &lt;video&gt; tracks</button>
+      <button id="showExtNative">Show ext track natively</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="log-clear">Clear log</button>
+  </div>
   <pre id="log"></pre>
 
   <script>
@@ -49,19 +136,24 @@
     const PLAYER_URL = "https://player.gvideo.co/v2/assets/latest/index.js";
     const logEl = document.getElementById("log");
     let player = null;
+    let _mod = null; // cached module reference for re-use after first import
 
     function log(...args) {
-      logEl.textContent += args.map((a) => (typeof a === "string" ? a : (() => { try { return JSON.stringify(a); } catch { return String(a); } })())).join(" ") + "\n";
+      logEl.textContent += args.map((a) =>
+        (typeof a === "string" ? a : (() => { try { return JSON.stringify(a); } catch { return String(a); } })())
+      ).join(" ") + "\n";
       logEl.scrollTop = logEl.scrollHeight;
       console.log(...args);
     }
+
+    document.getElementById("log-clear").onclick = () => { logEl.textContent = ""; };
 
     // KEY: the GCore Player is a thin wrapper with no caption API. The Clappr
     // player (core, active playback, subtitle tracks, setTextTrack) is at
     // `.player`. Subtitles are loaded via the active playback's setTextTrack(id),
     // NOT player.closedCaptionsTrackId (a no-op on the HLS backend).
     function activePlayback() {
-      return player && player.player && player.player.core && player.player.core.activePlayback;
+      return player?.player?.core?.activePlayback ?? null;
     }
     function ccTracks() {
       const pb = activePlayback();
@@ -76,7 +168,9 @@
       setTimeout(dumpVideoTextTracks, 1200);
     }
 
-    function dumpCc() { log("subtitle tracks:", ccTracks().map((t) => ({ id: t.id, name: t.name, lang: t.track && t.track.language }))); }
+    function dumpCc() {
+      log("subtitle tracks:", ccTracks().map((t) => ({ id: t.id, name: t.name, lang: t.track && t.track.language })));
+    }
 
     function dumpVideoTextTracks() {
       const v = document.querySelector("#player video");
@@ -89,6 +183,249 @@
     document.getElementById("dumpvideo").onclick = dumpVideoTextTracks;
     document.getElementById("off").onclick = () => selectTrack(-1);
 
+    // ── A3: Volume units ───────────────────────────────────────────────
+    function probeVolume(val) {
+      if (!player) { log("A3: no player"); return; }
+      if (val !== null) {
+        let ret;
+        try { ret = player.setVolume?.(val); } catch (e) { log("A3 setVolume err:", e.message); }
+        log(`A3 setVolume(${val}) returned:`, ret === undefined ? "(undefined)" : ret);
+      }
+      let got;
+      try { got = player.getVolume?.(); } catch (e) { log("A3 getVolume err:", e.message); }
+      const videoVol = document.querySelector("#player video")?.volume ?? "unavailable";
+      log(`A3 getVolume() =`, got === undefined ? "unavailable" : got, `| <video>.volume =`, videoVol);
+    }
+    document.getElementById("vol0").onclick  = () => probeVolume(0);
+    document.getElementById("vol05").onclick = () => probeVolume(0.5);
+    document.getElementById("vol1").onclick  = () => probeVolume(1);
+    document.getElementById("getvol").onclick = () => probeVolume(null);
+
+    // ── A4: In-manifest CC tracks ──────────────────────────────────────
+    document.getElementById("dumpcc2").onclick = () => {
+      log("=== A4: Dump CC tracks ===");
+      const pb = activePlayback();
+      if (!pb) { log("A4: no active playback"); return; }
+
+      // Try closedCaptionsTracks first, fall back to other known accessors
+      let tracks = null;
+      if (pb.closedCaptionsTracks !== undefined) {
+        tracks = pb.closedCaptionsTracks;
+        log("A4 source: activePlayback.closedCaptionsTracks");
+      } else if (pb.textTracks !== undefined) {
+        tracks = pb.textTracks;
+        log("A4 source: activePlayback.textTracks (fallback)");
+      } else if (pb.subtitleTracks !== undefined) {
+        tracks = pb.subtitleTracks;
+        log("A4 source: activePlayback.subtitleTracks (fallback)");
+      } else {
+        log("A4: no known CC track accessor found on activePlayback");
+      }
+
+      if (tracks !== null) {
+        const arr = Array.isArray(tracks) ? tracks : (typeof tracks[Symbol.iterator] === "function" ? [...tracks] : []);
+        if (arr.length === 0) {
+          log("A4: 0 CC tracks (manifest may have none, or tracks not yet loaded)");
+        } else {
+          arr.forEach((t, i) => {
+            log(`A4 track[${i}]: id=${t.id ?? "?"} language=${t.language ?? t.track?.language ?? "?"} name=${t.name ?? "?"} label=${t.label ?? "?"}`);
+          });
+        }
+      }
+
+      const videoTracks = document.querySelector("#player video")?.textTracks;
+      log("A4 <video>.textTracks.length:", videoTracks ? videoTracks.length : "unavailable");
+    };
+
+    // ── A5: Reload with playback config ───────────────────────────────
+    document.getElementById("reloadPlayback").onclick = async () => {
+      const playbackTypeVal = document.getElementById("playbackType").value.trim();
+      const priorityTransportVal = document.getElementById("priorityTransport").value.trim();
+      const url = document.getElementById("url").value.trim();
+
+      log("=== A5: Reload with playback config ===");
+      log("A5 playbackType:", playbackTypeVal || "(omitted)");
+      log("A5 priorityTransport:", priorityTransportVal || "(omitted)");
+
+      if (!_mod) { log("A5: module not loaded yet — use Load first, then retry"); return; }
+
+      const { Player, MediaControl, SourceController, ClosedCaptions, BottomGear, Spinner } = _mod;
+      [SourceController, MediaControl, ClosedCaptions].forEach((p) => {
+        if (p) try { Player.registerPlugin(p); } catch (e) { /* already registered */ }
+      });
+
+      if (player) { try { player.destroy(); } catch (e) { /* ignore */ } player = null; }
+
+      const playbackCfg = {
+        hlsjsConfig: { renderTextTracksNatively: true },
+      };
+      if (playbackTypeVal)       playbackCfg.playbackType       = playbackTypeVal;
+      if (priorityTransportVal)  playbackCfg.priorityTransport  = [priorityTransportVal];
+
+      log("A5 playback config:", JSON.stringify(playbackCfg));
+
+      player = new Player({
+        autoPlay: true,
+        mute: true,
+        sources: [{ source: url, mimeType: "application/x-mpegurl" }],
+        playback: playbackCfg,
+      });
+      window.player = player;
+
+      // A2: attach error handler logging raw shape
+      attachErrorHandler();
+
+      player.on("ready", () => {
+        const pb = activePlayback();
+        log("A5 READY — activePlayback.name:", pb?.name ?? "unavailable");
+        log("A5 activePlayback keys (first 20):", Object.keys(pb ?? {}).slice(0, 20).join(", "));
+        rebuildSubtitleButtons();
+      });
+      player.attachTo(document.getElementById("player"));
+      log("A5: attached; autoplay starting...");
+    };
+
+    // ── A6: DVR probe ──────────────────────────────────────────────────
+    document.getElementById("probeDvr").onclick = () => {
+      log("=== A6: Probe DVR ===");
+      const pb = activePlayback();
+      if (!pb) { log("A6: no active playback"); return; }
+
+      const fields = [
+        "dvrEnabled",
+        "name",
+      ];
+      fields.forEach((k) => log(`A6 ${k}:`, pb[k] !== undefined ? pb[k] : "unavailable"));
+
+      // Call-style accessors with optional chaining
+      log("A6 dvrInUse():", typeof pb.dvrInUse === "function" ? pb.dvrInUse() : "unavailable");
+      log("A6 getDuration():", typeof pb.getDuration === "function" ? pb.getDuration() : "unavailable");
+      log("A6 getCurrentTime():", typeof pb.getCurrentTime === "function" ? pb.getCurrentTime() : "unavailable");
+
+      // Seekable range
+      ["seekableRange", "getSeekable", "seekable", "getSeekableRange"].forEach((k) => {
+        if (pb[k] !== undefined) {
+          const v = typeof pb[k] === "function" ? pb[k]() : pb[k];
+          log(`A6 ${k}:`, JSON.stringify(v));
+        } else {
+          log(`A6 ${k}: unavailable`);
+        }
+      });
+
+      // Dump all keys so any DVR fields we missed surface
+      const allKeys = Object.keys(pb);
+      log("A6 activePlayback key count:", allKeys.length);
+      log("A6 activePlayback all keys:", allKeys.join(", "));
+    };
+
+    document.getElementById("loadAlt").onclick = () => {
+      const altUrl = document.getElementById("altUrl").value.trim();
+      if (!altUrl) { log("A6: enter an alt URL first"); return; }
+      document.getElementById("url").value = altUrl;
+      document.getElementById("load").click();
+    };
+
+    // ── A8: Quality levels ─────────────────────────────────────────────
+    document.getElementById("probeLevels").onclick = () => {
+      log("=== A8: Probe quality levels ===");
+      const pb = activePlayback();
+      if (!pb) { log("A8: no active playback"); return; }
+
+      const levels = pb?.levels;
+      log("A8 levels:", levels !== undefined ? JSON.stringify(levels) : "unavailable");
+      log("A8 currentLevel:", pb?.currentLevel !== undefined ? pb.currentLevel : "unavailable");
+    };
+
+    document.getElementById("setLevel0").onclick = () => {
+      const pb = activePlayback();
+      if (!pb) { log("A8: no active playback"); return; }
+      if (pb.currentLevel === undefined) { log("A8: currentLevel unavailable"); return; }
+      pb.currentLevel = 0;
+      log("A8 set currentLevel = 0; readback:", pb.currentLevel);
+    };
+
+    document.getElementById("setLevelAuto").onclick = () => {
+      const pb = activePlayback();
+      if (!pb) { log("A8: no active playback"); return; }
+      if (pb.currentLevel === undefined) { log("A8: currentLevel unavailable"); return; }
+      pb.currentLevel = -1;
+      log("A8 set currentLevel = -1 (auto); readback:", pb.currentLevel);
+    };
+
+    // ── D4: External subtitle source ───────────────────────────────────
+    function dumpExtTracks() {
+      log("--- D4 closedCaptionsTracks (hls.js) ---");
+      ccTracks().forEach((t, i) => log(`  cc[${i}] id=${t.id} name=${t.name} lang=${t.track?.language ?? t.language}`));
+      log("--- D4 <video>.textTracks (native) ---");
+      const v = document.querySelector("#player video");
+      if (v) [...v.textTracks].forEach((t, i) => log(`  vtt[${i}] kind=${t.kind} label=${t.label} lang=${t.language} mode=${t.mode} cues=${t.cues?.length ?? "null"}`));
+    }
+    document.getElementById("reloadExt").onclick = async () => {
+      const url = document.getElementById("url").value.trim();
+      const vtt = document.getElementById("extVtt").value.trim();
+      const lang = document.getElementById("extLang").value.trim() || "en-ext";
+      const field = document.getElementById("extField").value;
+      log("=== D4: Reload with external subtitle track ===");
+      if (!_mod) { log("D4: module not loaded — use Load first"); return; }
+      const { Player, MediaControl, SourceController, ClosedCaptions, Subtitles } = _mod;
+      [SourceController, MediaControl, ClosedCaptions].forEach((p) => { if (p) try { Player.registerPlugin(p); } catch (e) { /* already */ } });
+      if (Subtitles) { try { Player.registerPlugin(Subtitles); log("D4: registered Subtitles plugin"); } catch (e) { /* already */ } }
+      if (player) { try { player.destroy(); } catch (e) { /* ignore */ } player = null; }
+      const track = { kind: "subtitles", src: vtt, label: "External " + lang };
+      track[field] = lang;
+      const playbackCfg = { hlsjsConfig: { renderTextTracksNatively: true }, externalTracks: [track] };
+      log("D4 externalTracks (field=" + field + "):", JSON.stringify(playbackCfg.externalTracks));
+      player = new Player({ autoPlay: true, mute: true, sources: [{ source: url, mimeType: "application/x-mpegurl" }], playback: playbackCfg });
+      window.player = player;
+      attachErrorHandler();
+      player.on("ready", () => { log("D4 READY"); rebuildSubtitleButtons(); setTimeout(dumpExtTracks, 1800); });
+      player.attachTo(document.getElementById("player"));
+      log("D4: attached");
+    };
+    document.getElementById("dumpExt").onclick = dumpExtTracks;
+    document.getElementById("showExtNative").onclick = () => {
+      const v = document.querySelector("#player video");
+      if (!v) { log("D4: no video"); return; }
+      let shown = false;
+      [...v.textTracks].forEach((t) => {
+        if (t.language && t.language.includes("ext")) { t.mode = "showing"; shown = true; log("D4 set native textTrack showing:", t.label, t.language); }
+      });
+      if (!shown) log("D4: no ext native track found to show");
+      setTimeout(dumpExtTracks, 500);
+    };
+
+    // ── Shared helpers ─────────────────────────────────────────────────
+
+    // A2: attach error handler that logs RAW shape
+    function attachErrorHandler() {
+      if (!player) return;
+      player.on("error", (e) => {
+        log("A2 ERROR event — e.message:", e?.message ?? "unavailable");
+        try {
+          log("A2 ERROR raw shape:", JSON.stringify(e, Object.getOwnPropertyNames(e ?? {})));
+        } catch (_) {
+          log("A2 ERROR raw shape (fallback):", String(e));
+        }
+      });
+    }
+
+    function rebuildSubtitleButtons() {
+      setTimeout(() => {
+        const c = document.getElementById("controls");
+        c.innerHTML = "";
+        const tracks = ccTracks();
+        if (!tracks.length) { c.textContent = "(no subtitle tracks in this manifest)"; return; }
+        tracks.forEach((t) => {
+          const b = document.createElement("button");
+          b.textContent = `${t.name || (t.track && t.track.language) || t.id}`;
+          b.onclick = () => selectTrack(t.id);
+          c.appendChild(b);
+        });
+        log("subtitle tracks:", tracks.length);
+      }, 600);
+    }
+
+    // ── Main Load ──────────────────────────────────────────────────────
     document.getElementById("load").onclick = async () => {
       logEl.textContent = "";
       const url = document.getElementById("url").value.trim();
@@ -96,10 +433,54 @@
       let mod;
       try { mod = await import(PLAYER_URL); }
       catch (e) { log("MODULE IMPORT FAILED:", e.message, "\n(serve this page over http://, not file://)"); return; }
-      const { Player, MediaControl, SourceController, ClosedCaptions } = mod;
-      [SourceController, MediaControl, ClosedCaptions].forEach((p) => { if (p) try { Player.registerPlugin(p); } catch (e) { log("registerPlugin err:", e.message); } });
+      _mod = mod;
 
-      if (player) { try { player.destroy(); } catch (e) { /* ignore */ } }
+      // ── A7: Log available exports ────────────────────────────────────
+      log("A7 module exports (Object.keys(mod)):", Object.keys(mod).join(", "));
+
+      const {
+        Player, MediaControl, SourceController, ClosedCaptions,
+        PlayerEvent,
+        BottomGear, Spinner, ErrorScreen, ClapprNerdStats, LevelSelector, QualityLevels,
+      } = mod;
+
+      // ── A7: Log which named chrome plugins exist ──────────────────────
+      const chromeNames = ["BottomGear", "Spinner", "MediaControl", "ErrorScreen", "ClapprNerdStats", "LevelSelector", "ClosedCaptions", "QualityLevels"];
+      chromeNames.forEach((name) => {
+        log(`A7 export ${name}:`, mod[name] !== undefined ? "EXISTS" : "missing");
+      });
+
+      // ── Log available event names ─────────────────────────────────────
+      if (PlayerEvent) {
+        log("PlayerEvent keys:", Object.keys(PlayerEvent).join(", "));
+      } else {
+        log("PlayerEvent: not exported");
+      }
+
+      // ── Register plugins ──────────────────────────────────────────────
+      [SourceController, MediaControl, ClosedCaptions].forEach((p) => {
+        if (p) try { Player.registerPlugin(p); } catch (e) { log("registerPlugin err:", e.message); }
+      });
+
+      // A7: optionally register chrome plugins
+      if (document.getElementById("registerChrome").checked) {
+        log("A7: registering BottomGear and Spinner (registerChrome checked)");
+        [BottomGear, Spinner].forEach((p) => {
+          if (p) try { Player.registerPlugin(p); log("A7 registered:", p.name ?? p); } catch (e) { log("A7 registerPlugin err:", e.message); }
+          else log("A7: plugin not available (undefined)");
+        });
+      }
+
+      // ── A8: attach level-change event listeners using PlayerEvent keys ─
+      if (PlayerEvent) {
+        const levelEventCandidates = Object.keys(PlayerEvent).filter((k) =>
+          /level|quality|bitrate/i.test(k)
+        );
+        log("A8 candidate level/quality event keys:", levelEventCandidates.join(", ") || "(none)");
+        // We'll attach these after player is created below
+      }
+
+      if (player) { try { player.destroy(); } catch (e) { /* ignore */ } player = null; }
       player = new Player({
         autoPlay: true,
         mute: true,
@@ -108,23 +489,24 @@
       });
       window.player = player; // for console poking
 
-      player.on("error", (e) => log("ERROR:", e && e.message ? e.message : e));
+      // A2: error handler logging full shape
+      attachErrorHandler();
+
+      // A8: attach level/quality event listeners
+      if (PlayerEvent) {
+        Object.keys(PlayerEvent).filter((k) => /level|quality|bitrate/i.test(k)).forEach((k) => {
+          try {
+            player.on(PlayerEvent[k], (...args) => {
+              log(`A8 event ${k} (${PlayerEvent[k]}):`, JSON.stringify(args));
+            });
+          } catch (e) { /* ignore */ }
+        });
+      }
+
       player.on("ready", () => {
         log("=== READY === (subtitle tracks appear ~0.2s later; selection sticks once playback is ~2s in)");
-        // Build a button per subtitle track shortly after ready.
-        setTimeout(() => {
-          const c = document.getElementById("controls");
-          c.innerHTML = "";
-          const tracks = ccTracks();
-          if (!tracks.length) { c.textContent = "(no subtitle tracks in this manifest)"; return; }
-          tracks.forEach((t) => {
-            const b = document.createElement("button");
-            b.textContent = `${t.name || (t.track && t.track.language) || t.id}`;
-            b.onclick = () => selectTrack(t.id);
-            c.appendChild(b);
-          });
-          log("subtitle tracks:", tracks.length);
-        }, 600);
+        log("activePlayback.name:", activePlayback()?.name ?? "unavailable");
+        rebuildSubtitleButtons();
       });
       player.attachTo(document.getElementById("player"));
       log("attached; autoplay starting...");

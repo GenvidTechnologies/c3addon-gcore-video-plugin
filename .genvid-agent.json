@@ -15,7 +15,9 @@
     "default_branch": "main"
   },
   "features": {},
-  "paths": {},
+  "paths": {
+    "c3project": "sample/project.c3proj"
+  },
   "bugTracker": {
     "kind": "github",
     "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees",

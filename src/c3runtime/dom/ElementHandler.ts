@@ -27,8 +27,20 @@
     player?: {
       core?: {
         activePlayback?: ClapprPlayback;
+        // Retrieve a registered Clappr plugin by name (e.g. 'media_control').
+        getPlugin?: (name: string) => ClapprPlugin | undefined | null;
+        // Fallback: the list of registered plugin instances.
+        plugins?: ClapprPlugin[];
       };
     };
+  }
+
+  // Minimal interface for a Clappr plugin. MediaControl exposes enable()/disable()
+  // to show/hide the control bar without a player rebuild.
+  interface ClapprPlugin {
+    name?: string;
+    enable?(): void;
+    disable?(): void;
   }
 
   // The active playback (e.g. the HLS backend). Subtitle tracks are loaded via
@@ -44,6 +56,12 @@
       label?: string;
       track?: { id?: number; label?: string; language?: string };
     }>;
+    // ABR quality levels (HLS renditions). currentLevel is readable/writable:
+    // -1 = auto/ABR, otherwise the level index.
+    levels?: Array<{ level: number; width: number; height: number; bitrate: number; codec?: string }>;
+    currentLevel?: number;
+    // DVR support: public boolean getter — false on VOD (docs/gcore-player-api.md A6).
+    dvrEnabled?: boolean;
   }
 
   interface GCorePlayerConstructor {
@@ -112,6 +130,22 @@
     // that we carry the mute/volume state across video changes.
     lastMuted: boolean;
     lastVolume: number;
+    noLowLatency: boolean;
+    enableChrome: boolean;
+    enableDvr: boolean;
+    fallbackUrls: string[];
+    subtitleSources: Array<{ url: string; language: string; label: string }>;
+    // Track the last quality level reported to the runtime so we only post
+    // currentQuality on a TimeUpdate when it actually changed (no quality event).
+    lastReportedLevel: number;
+    // Snapshot of the last DVR state posted to the runtime, used in TimeUpdate
+    // to suppress redundant bridge posts when the window hasn't changed.
+    // Mirror of lastReportedLevel, but for DVR window data.
+    lastDvr: { isDvr: boolean; seekableStart: number; seekableEnd: number };
+    // JSON snapshot of the last subtitle track list posted to the runtime.
+    // Used in Ready and TimeUpdate to suppress redundant bridge posts when the
+    // list hasn't changed (mirrors lastReportedLevel / lastDvr pattern).
+    lastSubtitleTracksJson: string;
     resizeObserver: ResizeObserver | null;
     controller: AbortController;
 
@@ -130,6 +164,14 @@
       this.playbackBaseline = -1;
       this.lastMuted = true;
       this.lastVolume = -1;
+      this.noLowLatency = false;
+      this.enableChrome = false;
+      this.enableDvr = false;
+      this.fallbackUrls = [];
+      this.subtitleSources = [];
+      this.lastReportedLevel = -2; // sentinel: "not yet reported"
+      this.lastDvr = { isDvr: false, seekableStart: 0, seekableEnd: -1 };
+      this.lastSubtitleTracksJson = "";
       this.resizeObserver = null;
       this.controller = new AbortController();
 
@@ -185,10 +227,17 @@
       // Subtitles are selected via the player's closed-caption tracks (not a URL
       // query param anymore — see ApplySubtitles).
       this.subtitleLang = (e["subtitles"] ?? "off") as string;
-      // noLowLatency no longer maps to a URL param under the v2 player; proper
-      // low-latency config is a follow-up (GitHub issue #1).
+      const noLowLatency = (e["noLowLatency"] ?? false) as boolean;
+      this.enableChrome = (e["enableChrome"] ?? false) as boolean;
+      const enableDvr = (e["enableDvr"] ?? false) as boolean;
+      const fallbackUrls = (e["fallbackUrls"] ?? []) as string[];
+      const subtitleSources = (e["subtitleSources"] ?? []) as Array<{ url: string; language: string; label: string }>;
 
-      if (this.currentUrl !== url) {
+      if (this.NeedsRebuild({ url, noLowLatency, enableDvr, fallbackUrls, subtitleSources })) {
+        this.noLowLatency = noLowLatency;
+        this.enableDvr = enableDvr;
+        this.fallbackUrls = fallbackUrls;
+        this.subtitleSources = subtitleSources;
         this.currentUrl = url;
         if (url !== "") {
           console.debug("Loading", url);
@@ -203,7 +252,90 @@
         // URL unchanged (e.g. only the subtitle language changed) — apply it to
         // the existing player without rebuilding it.
         this.ApplySubtitles();
+        // A live chrome toggle (no URL change) takes effect immediately.
+        this.ApplyChrome();
       }
+    }
+
+    // Central seam for deciding whether an incoming state update requires
+    // tearing down and rebuilding the player. Construction-time config toggles
+    // (latency mode, etc.) extend this by adding fields to `next` and comparing
+    // them against current state here. Subtitle-only changes take the light path
+    // (no rebuild) — they are applied to the existing player via ApplySubtitles.
+    private NeedsRebuild(next: { url: string; noLowLatency: boolean; enableDvr: boolean; fallbackUrls: string[]; subtitleSources: Array<{ url: string; language: string; label: string }> }): boolean {
+      if (this.currentUrl !== next.url) return true;
+      // Construction-time config changes below are only meaningful when a URL is
+      // set (no point rebuilding an idle player).
+      if (next.url !== "") {
+        if (this.noLowLatency !== next.noLowLatency) return true;
+        if (this.enableDvr !== next.enableDvr) return true;
+        if (JSON.stringify(this.fallbackUrls) !== JSON.stringify(next.fallbackUrls)) return true;
+        if (JSON.stringify(this.subtitleSources) !== JSON.stringify(next.subtitleSources)) return true;
+      }
+      return false;
+    }
+
+    // Constructs the config object passed to the Player constructor. Reads
+    // current instance state (e.g. lastMuted, noLowLatency) and the pre-resolved
+    // sources array. Extracted as a seam so construction-time config (quality,
+    // latency, etc.) is layered here without touching CreatePlayer.
+    private BuildPlayerConfig(sources: Array<{ source: string; mimeType: string }>): unknown {
+      const hlsjsConfig: Record<string, unknown> = {
+        // The player defaults hls.js to non-native subtitle rendering, whose
+        // custom renderer doesn't display our selected track. Force native
+        // text-track rendering so the browser renders cues for the track we
+        // mark "showing" via closedCaptionsTrackId. hlsjsConfig takes priority.
+        renderTextTracksNatively: true,
+      };
+      if (this.noLowLatency) {
+        // The PRIMARY noLowLatency mechanism is the manifest path: live streams
+        // resolve to the MPEG-TS (non-low-latency) manifest instead of CMAF (see
+        // ResolveManifest). This hls.js flag is a secondary safeguard for the
+        // case where a direct low-latency manifest URL is supplied (it can't be
+        // re-pathed) — disable LL-HLS mode so it isn't played low-latency.
+        hlsjsConfig.lowLatencyMode = false;
+      }
+
+      // Side-loaded (API-injected) external subtitle tracks. Clappr's HTML5
+      // playback wires these via _setupExternalTracks(options.playback.externalTracks)
+      // at construction time, so they appear in closedCaptionsTracks alongside
+      // any in-manifest tracks — ApplySubtitles/SelectTextTrack then picks them
+      // up unchanged via the usual language-matching path.
+      //
+      // VERIFIED (docs/gcore-player-api.md D4): the { kind, src, label, lang }
+      // shape loads correctly, BUT the resulting track is a native
+      // <video><track> only — it does NOT appear in hls.js closedCaptionsTracks.
+      // ApplySubtitles therefore selects external tracks via the native
+      // textTrack.mode (SetExternalTrackMode), not setTextTrack(). Use a language
+      // tag distinct from the in-manifest ones (e.g. "en-ext") so it isn't
+      // shadowed by an in-manifest track of the same language.
+      const playback: Record<string, unknown> = { hlsjsConfig };
+      if (this.subtitleSources.length > 0) {
+        playback.externalTracks = this.subtitleSources.map((s) => ({
+          kind: "subtitles",
+          src: s.url,
+          label: s.label,
+          lang: s.language,
+        }));
+      }
+
+      const config: Record<string, unknown> = {
+        autoPlay: true,
+        // Only the first autoplay needs forced mute; subsequent loads keep the
+        // user's mute state.
+        mute: this.lastMuted,
+        sources,
+        playback,
+      };
+
+      if (this.enableDvr) {
+        // DVR mode opt-in: sets playbackType to "dvr" so the player enables the
+        // seekable live window. Effect unverified against a live DVR stream
+        // (docs/gcore-player-api.md A6).
+        config.playbackType = "dvr";
+      }
+
+      return config;
     }
 
     async CreatePlayer(url: string) {
@@ -224,9 +356,21 @@
         return;
       }
 
-      let manifestUrl: string;
+      // Resolve the primary URL and all fallback URLs concurrently. The primary
+      // must succeed; fallback resolution failures are swallowed so a bad
+      // fallback URL doesn't block the primary from loading.
+      const allUrls = [url, ...this.fallbackUrls];
+      let resolved: string[];
       try {
-        manifestUrl = await this.ResolveManifest(url);
+        resolved = await Promise.all(
+          allUrls.map((u, i) =>
+            this.ResolveManifest(u).catch((err) => {
+              if (i === 0) throw err; // primary failure is fatal
+              console.warn("[video player] Failed to resolve fallback manifest", u, err);
+              return null as unknown as string;
+            })
+          )
+        );
       } catch (err) {
         console.error("[video player] Failed to resolve manifest", err);
         this.PostErrorToRuntime("gcore", `Could not resolve video manifest: ${err}`);
@@ -239,26 +383,22 @@
         return;
       }
 
+      // Build the sources array from successfully-resolved URLs (skip nulls from
+      // failed fallback resolutions).
+      const sources = resolved
+        .filter((s): s is string => s != null)
+        .map((s) => ({ source: s, mimeType: this.GetMimeType(s) }));
+
       this.DestroyPlayer();
 
       // Reset playback-stability tracking for the new video.
       this.playbackStable = false;
       this.playbackBaseline = -1;
+      // Reset subtitle-track change-guard so the new video re-posts its list.
+      // Mirrors lastReportedLevel reset for quality.
+      this.lastSubtitleTracksJson = "";
 
-      const player = new Player({
-        autoPlay: true,
-        // Only the first autoplay needs forced mute; subsequent loads keep the
-        // user's mute state.
-        mute: this.lastMuted,
-        sources: [{ source: manifestUrl, mimeType: this.GetMimeType(manifestUrl) }],
-        playback: {
-          // The player defaults hls.js to non-native subtitle rendering, whose
-          // custom renderer doesn't display our selected track. Force native
-          // text-track rendering so the browser renders cues for the track we
-          // mark "showing" via closedCaptionsTrackId. hlsjsConfig takes priority.
-          hlsjsConfig: { renderTextTracksNatively: true },
-        },
-      });
+      const player = new Player(this.BuildPlayerConfig(sources));
       this.player = player;
       this.RegisterEvents(player);
       player.attachTo(this.element);
@@ -269,7 +409,7 @@
       this.resizeObserver?.disconnect();
       this.resizeObserver = new ResizeObserver(() => this.ResizePlayer());
       this.resizeObserver.observe(this.element);
-      console.log("Player created", player, "manifest:", manifestUrl);
+      console.log("Player created", player, "sources:", sources);
     }
 
     ResizePlayer() {
@@ -301,8 +441,22 @@
 
       if (lang === "off") {
         this.SelectTextTrack(playback, -1);
+        this.SetExternalTrackMode(null);
         return;
       }
+
+      // Side-loaded (API-injected) tracks are native <video><track> elements:
+      // they appear in <video>.textTracks but NOT in hls.js closedCaptionsTracks,
+      // so they're selected by toggling the native textTrack.mode rather than
+      // setTextTrack(). They exist from construction, so unlike in-manifest tracks
+      // they can be applied immediately (no playback-stable wait). Try them first.
+      const externalLangs = this.subtitleSources.map((s) => s.language.toLowerCase());
+      if (externalLangs.includes(lang)) {
+        this.SelectTextTrack(playback, -1); // clear any in-manifest selection
+        this.SetExternalTrackMode(lang);
+        return;
+      }
+
       if (!this.playbackStable) {
         // The TimeUpdate handler re-invokes ApplySubtitles once stable.
         return;
@@ -318,9 +472,57 @@
       if (!match) {
         console.warn("[video player] No subtitle track for", lang, "available:", tracks);
         this.SelectTextTrack(playback, -1);
+        this.SetExternalTrackMode(null);
         return;
       }
       this.SelectTextTrack(playback, match.id);
+      this.SetExternalTrackMode(null); // an in-manifest track won — hide externals
+    }
+
+    // Show the side-loaded external native textTrack whose language matches
+    // `targetLang` (lowercased), disabling our other external tracks. Pass null
+    // to disable all external tracks. Only touches tracks whose language is one
+    // of our subtitleSources languages, so hls.js-managed in-manifest native
+    // tracks are left under hls.js control (selected via setTextTrack).
+    private SetExternalTrackMode(targetLang: string | null) {
+      if (this.subtitleSources.length === 0) {
+        return;
+      }
+      const video = this.element.querySelector("video") as HTMLVideoElement | null;
+      if (!video) {
+        return;
+      }
+      const externalLangs = new Set(this.subtitleSources.map((s) => s.language.toLowerCase()));
+      for (const track of Array.from(video.textTracks)) {
+        const tl = (track.language || "").toLowerCase();
+        if (!externalLangs.has(tl)) {
+          continue; // in-manifest track — leave it to hls.js
+        }
+        track.mode = targetLang !== null && tl === targetLang ? "showing" : "disabled";
+      }
+    }
+
+    private ApplyChrome() {
+      const core = this.player?.player?.core;
+      if (!core) {
+        return;
+      }
+      // Prefer the typed getPlugin() accessor; fall back to scanning the plugins
+      // array for implementations that don't expose getPlugin.
+      const mediaControl: ClapprPlugin | undefined | null =
+        core.getPlugin?.("media_control") ??
+        core.plugins?.find((p) => p.name === "media_control");
+
+      if (!mediaControl) {
+        console.warn("[video player] media_control plugin not found; cannot toggle chrome");
+        return;
+      }
+
+      if (this.enableChrome) {
+        mediaControl.enable?.();
+      } else {
+        mediaControl.disable?.();
+      }
     }
 
     SelectTextTrack(playback: ClapprPlayback, trackId: number) {
@@ -334,9 +536,13 @@
     // The v2 player needs a direct HLS manifest URL, but projects store GCore
     // *embed page* URLs (player.gvideo.co/videos|streams/<id>) — the kind the
     // old iframe plugin consumed. GCore serves the manifest from the account CDN
-    // host derived from the client id (the numeric prefix of the video id):
+    // host derived from the client id (the numeric prefix of the video id). The
+    // CDN path differs by kind: VOD lives under "videos/", but LIVE streams are
+    // served under "cmaf/" (NOT "streams/"):
     //   player.gvideo.co/videos/<clientId>_<tok>
     //     -> https://<clientId>.gvideo.io/videos/<clientId>_<tok>/master.m3u8
+    //   player.gvideo.co/streams/<clientId>_<tok>
+    //     -> https://<clientId>.gvideo.io/cmaf/<clientId>_<tok>/master.m3u8
     // A URL that is already a manifest is returned unchanged; anything that
     // doesn't match the embed pattern falls back to reading the stream URL the
     // embed page itself uses (options.multisources[].source).
@@ -348,6 +554,17 @@
       const m = path.match(/\/(videos|streams)\/((\d+)_[^/]+?)\/?$/);
       if (m) {
         const [, kind, id, clientId] = m;
+        if (kind === "streams") {
+          // Live streams: GCore serves a low-latency manifest from the CMAF path
+          // and a non-low-latency manifest from the MPEG-TS path. The
+          // noLowLatency flag selects between them (this is the real mechanism;
+          // a change rebuilds the player via NeedsRebuild). DASH is also
+          // available at cmaf/<id>/index.mpd but is not used here.
+          return this.noLowLatency
+            ? `https://${clientId}.gvideo.io/mpegts/${id}/master_mpegts.m3u8`
+            : `https://${clientId}.gvideo.io/cmaf/${id}/master.m3u8`;
+        }
+        // VOD is served from the "videos/" path.
         return `https://${clientId}.gvideo.io/${kind}/${id}/master.m3u8`;
       }
       // Fallback for non-standard embed URLs: scrape the manifest the embed
@@ -417,15 +634,45 @@
         if (typeof total === "number" && !isNaN(total)) {
           state.duration = total;
         }
+        // Poll ABR quality level on each TimeUpdate (no quality-change event).
+        // Only post when the level actually changed to avoid spamming the bridge.
+        const activePlayback = player.player?.core?.activePlayback;
+        if (activePlayback !== undefined) {
+          const currentQuality = activePlayback.currentLevel ?? -1;
+          if (currentQuality !== this.lastReportedLevel) {
+            this.lastReportedLevel = currentQuality;
+            state.currentQuality = currentQuality;
+          }
+        }
         this.PostStateToRuntime(state);
+
+        // Poll the DVR window on each TimeUpdate — the live window grows over
+        // time. Only post when it changed to avoid spamming the bridge.
+        const dvr = this.ReadDvrState(player);
+        if (
+          dvr.isDvr !== this.lastDvr.isDvr ||
+          dvr.seekableStart !== this.lastDvr.seekableStart ||
+          dvr.seekableEnd !== this.lastDvr.seekableEnd
+        ) {
+          this.lastDvr = dvr;
+          this.PostStateToRuntime(dvr);
+        }
+
+        // Poll subtitle tracks on each TimeUpdate — in-manifest tracks populate
+        // ~0.2s after Ready. The change-guard in PostSubtitleTracks prevents
+        // bridge spam when the list is stable.
+        this.PostSubtitleTracks();
       });
 
       player.on(PlayerEvent.VolumeUpdate, () => {
         // Remember the latest audio state so it carries to the next video.
         this.lastMuted = player.isMuted();
-        this.lastVolume = player.getVolume();
+        // player API is 0..100 (docs/gcore-player-api.md A3); convert to 0..1
+        // for the runtime/ACE layer. lastVolume is kept in 0..1 units.
+        this.lastVolume = player.getVolume() / 100;
         this.PostStateToRuntime({
-          currentVolume: player.getVolume(),
+          // player API is 0..100; divide by 100 to report 0..1 to the runtime.
+          currentVolume: player.getVolume() / 100,
           audioState: player.isMuted() ? "muted" : "unmuted",
         });
       });
@@ -438,12 +685,31 @@
       player.on(PlayerEvent.Ready, () => {
         console.log("[video player]", "Ready");
         // Restore the prior volume level on a subsequent (unmuted) load.
+        // lastVolume is in 0..1; multiply by 100 because the player API is
+        // 0..100 (docs/gcore-player-api.md A3).
         if (!this.lastMuted && this.lastVolume >= 0) {
-          player.setVolume(this.lastVolume);
+          player.setVolume(this.lastVolume * 100);
         }
         this.PostPlaybackInfo(player);
         // Subtitle tracks are known once the manifest is parsed (by Ready).
         this.ApplySubtitles();
+        // Post the subtitle track list now that in-manifest tracks are available.
+        // PostSubtitleTracks is also called on each TimeUpdate because in-manifest
+        // tracks may populate ~0.2s after Ready; the change-guard prevents spam.
+        this.PostSubtitleTracks();
+        // Apply the initial/post-rebuild chrome (control bar) state now that
+        // plugins are live and the media_control plugin is available.
+        this.ApplyChrome();
+        // Quality levels are available after manifest parse; report them now.
+        const activePlayback = player.player?.core?.activePlayback;
+        const qualityCount = activePlayback?.levels?.length ?? 0;
+        const currentQuality = activePlayback?.currentLevel ?? -1;
+        this.lastReportedLevel = currentQuality;
+        this.PostStateToRuntime({ qualityCount, currentQuality });
+        // Post initial DVR state once the manifest is parsed and the player is
+        // ready. The seekable window (if any) should be known at this point.
+        // PostDvrState also updates lastDvr so TimeUpdate suppression stays in sync.
+        this.PostDvrState(player);
       });
     }
 
@@ -453,7 +719,9 @@
     // distinguish "muted" from "volume happens to be 0".
     PostPlaybackInfo(player: GCorePlayer) {
       const state: JSONObject = {
-        currentVolume: player.getVolume(),
+        // player API is 0..100 (docs/gcore-player-api.md A3); divide by 100
+        // to report 0..1 to the runtime/ACE layer.
+        currentVolume: player.getVolume() / 100,
         audioState: player.isMuted() ? "muted" : "unmuted",
       };
       const duration = player.getDuration();
@@ -462,6 +730,73 @@
         state.duration = duration;
       }
       this.PostStateToRuntime(state);
+    }
+
+    // Read DVR state from the underlying Clappr playback. `dvrEnabled` is a
+    // public boolean getter (false on VOD). The seekable-window boundaries live
+    // in PRIVATE fields with no public accessor — we read them defensively
+    // through a loose cast.
+    //
+    // IMPORTANT: The private-field reads (_playableRegionStartTime,
+    // _playableRegionDuration) are fragile and pending verification against a
+    // real DVR stream (docs/gcore-player-api.md A6). They may break on a future
+    // player update.
+    private ReadDvrState(player: GCorePlayer): { isDvr: boolean; seekableStart: number; seekableEnd: number } {
+      const ap = player.player?.core?.activePlayback;
+      const isDvr = ap?.dvrEnabled ?? false;
+
+      // Read private fields defensively — no public seekable-range API exists.
+      // Cast through Record<string, unknown> to avoid any TS property-access error.
+      const apAny = ap as unknown as Record<string, unknown> | undefined;
+      const start =
+        typeof apAny?.["_playableRegionStartTime"] === "number"
+          ? (apAny["_playableRegionStartTime"] as number)
+          : 0;
+      const dur =
+        typeof apAny?.["_playableRegionDuration"] === "number"
+          ? (apAny["_playableRegionDuration"] as number)
+          : -1;
+      return { isDvr, seekableStart: start, seekableEnd: dur >= 0 ? start + dur : -1 };
+    }
+
+    // Post the current DVR state unconditionally (used from Ready). Also updates
+    // `lastDvr` so the TimeUpdate change-suppression stays in sync.
+    private PostDvrState(player: GCorePlayer) {
+      const dvr = this.ReadDvrState(player);
+      this.lastDvr = dvr;
+      this.PostStateToRuntime(dvr);
+    }
+
+    // Build the combined subtitle track list: external (side-loaded) tracks
+    // first, then in-manifest tracks from the Clappr active playback.
+    // External tracks precede in-manifest so their index is stable regardless
+    // of whether the manifest has loaded yet.
+    private BuildSubtitleTrackList(): Array<{ language: string; label: string }> {
+      const closedCaptionsTracks =
+        this.player?.player?.core?.activePlayback?.closedCaptionsTracks;
+      return [
+        ...this.subtitleSources.map((s) => ({
+          language: s.language,
+          label: s.label,
+        })),
+        ...(closedCaptionsTracks ?? []).map((t) => ({
+          language: t.track?.language ?? t.name ?? "",
+          label: t.name ?? t.track?.label ?? "",
+        })),
+      ];
+    }
+
+    // Post the subtitle track list to the runtime when it has changed.
+    // Uses JSON serialisation as a change-guard to avoid spamming the bridge
+    // (mirrors lastReportedLevel for quality and lastDvr for DVR window data).
+    private PostSubtitleTracks() {
+      const list = this.BuildSubtitleTrackList();
+      const json = JSON.stringify(list);
+      if (json === this.lastSubtitleTracksJson) {
+        return;
+      }
+      this.lastSubtitleTracksJson = json;
+      this.PostStateToRuntime({ subtitleTracks: list });
     }
 
     DestroyPlayer() {
@@ -506,8 +841,10 @@
       const volume = state["requestedVolume"];
       console.log("[video player] Set volume requested", volume);
       if (typeof volume === "number") {
+        // ACE/runtime value is 0..1; keep lastVolume in 0..1 units.
         this.lastVolume = volume;
-        this.player?.setVolume(volume);
+        // player API is 0..100 (docs/gcore-player-api.md A3); multiply by 100.
+        this.player?.setVolume(volume * 100);
       }
     }
 
@@ -523,6 +860,31 @@
       this.lastMuted = false;
       this.player?.unmute();
       this.PostStateToRuntime({ audioState: "unmuted" });
+    }
+
+    OnSetQuality(state: JSONObject) {
+      const level = state["level"];
+      console.log("[video player] Set quality requested", level);
+      if (typeof level !== "number") {
+        return;
+      }
+      const activePlayback = this.player?.player?.core?.activePlayback;
+      if (activePlayback === undefined || activePlayback === null) {
+        console.warn("[video player] Cannot set quality: activePlayback not available");
+        return;
+      }
+      if (activePlayback.currentLevel !== undefined) {
+        activePlayback.currentLevel = level;
+      }
+      // Post the updated currentQuality back to the runtime.
+      const currentQuality = activePlayback.currentLevel ?? -1;
+      this.lastReportedLevel = currentQuality;
+      this.PostStateToRuntime({ currentQuality });
+    }
+
+    OnResize() {
+      console.log("[video player] Resize requested");
+      this.ResizePlayer();
     }
   }
 

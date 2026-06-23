@@ -30,5 +30,29 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 	},
 	NoLowLatency(this:SDKInstanceClass) {
 		return this._GetNoLowLatency();
+	},
+	GetEnableChrome(this:SDKInstanceClass) {
+		return this._GetEnableChrome();
+	},
+	GetCurrentQuality(this:SDKInstanceClass) {
+		return this._currentQuality;
+	},
+	GetQualityCount(this:SDKInstanceClass) {
+		return this._qualityCount;
+	},
+	GetSeekableStart(this:SDKInstanceClass) {
+		return this._GetSeekableStart();
+	},
+	GetSeekableEnd(this:SDKInstanceClass) {
+		return this._GetSeekableEnd();
+	},
+	GetSubtitleCount(this:SDKInstanceClass) {
+		return this._GetSubtitleCount();
+	},
+	GetSubtitleLanguageAt(this:SDKInstanceClass, index: number) {
+		return this._GetSubtitleLanguageAt(index);
+	},
+	GetSubtitleLabelAt(this:SDKInstanceClass, index: number) {
+		return this._GetSubtitleLabelAt(index);
 	}
 };

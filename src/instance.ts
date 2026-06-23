@@ -40,16 +40,10 @@ PLUGIN_CLASS.Instance = class GCoreVideoInstance extends SDK.IWorldInstanceBase 
 		const textZoom = iLayoutView.GetZoomFactor();
 		this._webglText.SetSize(this._inst.GetWidth(), this._inst.GetHeight(), textZoom);
 
-		let url = this._inst.GetPropertyValue("video-url") as string;
-		const subtitles = this._inst.GetPropertyValue("video-subtitles") || "off";
-		const noLowLatency = this._inst.GetPropertyValue("no-low-latency") || false;
-
-		if (subtitles !== "off") {
-			url += "?sub_lang=" + subtitles;
-		}
-		if (noLowLatency) {
-			url += (url.includes('?') ? "&" : "?") + "no_low_latency";
-		}
+		// Show the raw video URL as the editor placeholder. Subtitles and
+		// low-latency are handled via the v2 player API at runtime, not URL
+		// query params, so they are not appended here.
+		const url = this._inst.GetPropertyValue("video-url") as string;
 
 		this._webglText.SetText(url);
 	}

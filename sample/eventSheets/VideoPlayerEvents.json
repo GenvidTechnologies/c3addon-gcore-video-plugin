@@ -183,6 +183,16 @@
 					"sid": 125392815096367
 				},
 				{
+					"eventType": "variable",
+					"name": "subtitleUrl",
+					"type": "string",
+					"initialValue": "",
+					"comment": "",
+					"isStatic": false,
+					"isConstant": false,
+					"sid": 947624674321665
+				},
+				{
 					"eventType": "block",
 					"conditions": [
 						{
@@ -203,12 +213,28 @@
 						{
 							"id": "set-url",
 							"objectClass": "VideoPlayer",
-							"sid": 771308354467195,
+							"sid": 957457735125510,
 							"parameters": {
 								"url": "\"https://player.gvideo.co/videos/421804_JUpVsXgbH6ky2vAW\"",
-								"subtitles": "\"\"",
 								"no-low-latency": false
 							}
+						},
+						{
+							"id": "add-project-subtitle-source",
+							"objectClass": "VideoPlayer",
+							"sid": 203018466277476,
+							"parameters": {
+								"file": {
+									"path": "01_ARGUS_FR.vtt"
+								},
+								"language": "\"fr\"",
+								"label": "\"French (ext)\""
+							}
+						},
+						{
+							"id": "wait-for-previous-actions",
+							"objectClass": "System",
+							"sid": 119138804542107
 						},
 						{
 							"callFunction": "UpdateURLUI",
@@ -241,7 +267,6 @@
 							"sid": 192662466680905,
 							"parameters": {
 								"url": "\"https://player.gvideo.co/videos/2675_cC4PEC0AWy1qu03R\"",
-								"subtitles": "\"\"",
 								"no-low-latency": false
 							}
 						},
@@ -265,7 +290,7 @@
 						{
 							"id": "set-playback-time",
 							"objectClass": "VideoPlayer",
-							"sid": 721744153602868,
+							"sid": 957465038395667,
 							"parameters": {
 								"playback-time": "100"
 							}
@@ -286,9 +311,9 @@
 						{
 							"id": "set-volume",
 							"objectClass": "VideoPlayer",
-							"sid": 330329780513761,
+							"sid": 687000869334731,
 							"parameters": {
-								"level": "50"
+								"level": "0.5"
 							}
 						}
 					],
@@ -307,9 +332,9 @@
 						{
 							"id": "set-volume",
 							"objectClass": "VideoPlayer",
-							"sid": 811512415488942,
+							"sid": 433282878908213,
 							"parameters": {
-								"level": "100"
+								"level": "1"
 							}
 						}
 					],
@@ -361,18 +386,88 @@
 					"eventType": "block",
 					"conditions": [
 						{
+							"id": "for-each",
+							"objectClass": "System",
+							"sid": 798292373625503,
+							"parameters": {
+								"object": "SubtitleButton"
+							}
+						}
+					],
+					"actions": [],
+					"sid": 165154468298557,
+					"children": [
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "has-subtitle-language",
+									"objectClass": "VideoPlayer",
+									"sid": 476640420114553,
+									"parameters": {
+										"lang": "SubtitleButton.lang"
+									}
+								}
+							],
+							"actions": [
+								{
+									"id": "set-enabled",
+									"objectClass": "SubtitleButton",
+									"sid": 955742329447127,
+									"parameters": {
+										"mode": "enabled"
+									}
+								}
+							],
+							"sid": 770047318837630
+						},
+						{
+							"eventType": "block",
+							"conditions": [
+								{
+									"id": "else",
+									"objectClass": "System",
+									"sid": 281275041917930
+								}
+							],
+							"actions": [
+								{
+									"id": "set-enabled",
+									"objectClass": "SubtitleButton",
+									"sid": 790221843330877,
+									"parameters": {
+										"mode": "disabled"
+									}
+								}
+							],
+							"sid": 993184419283086
+						}
+					]
+				},
+				{
+					"eventType": "block",
+					"conditions": [
+						{
 							"id": "on-clicked",
-							"objectClass": "EnglishButton",
+							"objectClass": "SubtitleButton",
 							"sid": 936820827566704
+						},
+						{
+							"id": "has-subtitle-language",
+							"objectClass": "VideoPlayer",
+							"sid": 362812108551977,
+							"parameters": {
+								"lang": "SubtitleButton.lang"
+							}
 						}
 					],
 					"actions": [
 						{
 							"id": "set-subtitles",
 							"objectClass": "VideoPlayer",
-							"sid": 572800558124100,
+							"sid": 407266163858128,
 							"parameters": {
-								"language": "\"en\""
+								"language": "SubtitleButton.lang"
 							}
 						},
 						{
@@ -435,7 +530,6 @@
 							"sid": 905636149532787,
 							"parameters": {
 								"url": "\"https://player.gvideo.co/streams/421804_1970571\"",
-								"subtitles": "\"\"",
 								"no-low-latency": false
 							}
 						},
@@ -445,6 +539,44 @@
 						}
 					],
 					"sid": 926110979382380
+				},
+				{
+					"eventType": "block",
+					"conditions": [
+						{
+							"id": "on-clicked",
+							"objectClass": "SubtitleButton",
+							"sid": 646096726144500
+						},
+						{
+							"id": "has-tags",
+							"objectClass": "SubtitleButton",
+							"sid": 642333556860590,
+							"parameters": {
+								"tags": "\"french\""
+							}
+						},
+						{
+							"id": "has-subtitles",
+							"objectClass": "VideoPlayer",
+							"sid": 811773227538178
+						}
+					],
+					"actions": [
+						{
+							"id": "set-subtitles",
+							"objectClass": "VideoPlayer",
+							"sid": 227474351471246,
+							"parameters": {
+								"language": "\"fr\""
+							}
+						},
+						{
+							"callFunction": "UpdateURLUI",
+							"sid": 744691236836108
+						}
+					],
+					"sid": 846136153447653
 				},
 				{
 					"eventType": "block",

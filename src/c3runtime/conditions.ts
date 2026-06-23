@@ -30,5 +30,20 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 	},
 	IsMuted(this: SDKInstanceClass) {
 		return this._audioState === "muted";
+	},
+	IsDVR(this: SDKInstanceClass) {
+		return this._IsDVR();
+	},
+	HasSubtitles(this: SDKInstanceClass) {
+		return this._HasSubtitles();
+	},
+	HasSubtitleLanguage(this: SDKInstanceClass, lang: string) {
+		return this._HasSubtitleLanguage(lang);
+	},
+	HasSubtitleLabel(this: SDKInstanceClass, label: string) {
+		return this._HasSubtitleLabel(label);
+	},
+	OnSubtitlesAvailable(this: SDKInstanceClass) {
+		return true;
 	}
 };
