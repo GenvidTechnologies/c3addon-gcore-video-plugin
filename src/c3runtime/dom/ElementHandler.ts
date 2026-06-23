@@ -538,9 +538,13 @@
     // The v2 player needs a direct HLS manifest URL, but projects store GCore
     // *embed page* URLs (player.gvideo.co/videos|streams/<id>) — the kind the
     // old iframe plugin consumed. GCore serves the manifest from the account CDN
-    // host derived from the client id (the numeric prefix of the video id):
+    // host derived from the client id (the numeric prefix of the video id). The
+    // CDN path differs by kind: VOD lives under "videos/", but LIVE streams are
+    // served under "cmaf/" (NOT "streams/"):
     //   player.gvideo.co/videos/<clientId>_<tok>
     //     -> https://<clientId>.gvideo.io/videos/<clientId>_<tok>/master.m3u8
+    //   player.gvideo.co/streams/<clientId>_<tok>
+    //     -> https://<clientId>.gvideo.io/cmaf/<clientId>_<tok>/master.m3u8
     // A URL that is already a manifest is returned unchanged; anything that
     // doesn't match the embed pattern falls back to reading the stream URL the
     // embed page itself uses (options.multisources[].source).
@@ -552,7 +556,9 @@
       const m = path.match(/\/(videos|streams)\/((\d+)_[^/]+?)\/?$/);
       if (m) {
         const [, kind, id, clientId] = m;
-        return `https://${clientId}.gvideo.io/${kind}/${id}/master.m3u8`;
+        // Live ("streams/" embed) manifests are served from the CDN "cmaf/" path.
+        const cdnPath = kind === "streams" ? "cmaf" : kind;
+        return `https://${clientId}.gvideo.io/${cdnPath}/${id}/master.m3u8`;
       }
       // Fallback for non-standard embed URLs: scrape the manifest the embed
       // page references directly.
