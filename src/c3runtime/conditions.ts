@@ -33,5 +33,11 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 	},
 	IsDVR(this: SDKInstanceClass) {
 		return this._IsDVR();
+	},
+	HasSubtitles(this: SDKInstanceClass) {
+		return this._HasSubtitles();
+	},
+	OnSubtitlesAvailable(this: SDKInstanceClass) {
+		return true;
 	}
 };

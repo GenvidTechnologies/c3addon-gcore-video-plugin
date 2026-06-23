@@ -83,6 +83,16 @@
 						"list-name": "Is DVR",
 						"display-text": "Is DVR",
 						"description": "Whether the current stream is a DVR (seekable live) stream. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
+					},
+					"has-subtitles": {
+						"list-name": "Has subtitles",
+						"display-text": "Has subtitles",
+						"description": "Whether any subtitle tracks are available (in-manifest or side-loaded)."
+					},
+					"on-subtitles-available": {
+						"list-name": "On subtitles available",
+						"display-text": "On subtitles available",
+						"description": "Triggered when the subtitle track list becomes known or changes."
 					}
 				},
 				"actions": {
@@ -310,6 +320,18 @@
 					"get-seekable-end": {
 						"description": "The end of the DVR seekable window (seconds). -1 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
 						"translated-name": "GetSeekableEnd"
+					},
+					"get-subtitle-count": {
+						"description": "The number of available subtitle tracks (in-manifest + side-loaded).",
+						"translated-name": "GetSubtitleCount"
+					},
+					"get-subtitle-language-at": {
+						"description": "The language code of the subtitle track at the given index.",
+						"translated-name": "GetSubtitleLanguageAt"
+					},
+					"get-subtitle-label-at": {
+						"description": "The human-readable label of the subtitle track at the given index.",
+						"translated-name": "GetSubtitleLabelAt"
 					}
 				},
 				"debugger": {
@@ -334,7 +356,8 @@
 					"enableDvr": "Enable DVR",
 					"isDvr": "Is DVR Stream",
 					"seekableStart": "DVR Seekable Start",
-					"seekableEnd": "DVR Seekable End"
+					"seekableEnd": "DVR Seekable End",
+					"subtitleTracks": "Subtitle Track Count"
 				}
 			}
 		}

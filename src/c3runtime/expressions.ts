@@ -45,5 +45,14 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Exps =
 	},
 	GetSeekableEnd(this:SDKInstanceClass) {
 		return this._GetSeekableEnd();
+	},
+	GetSubtitleCount(this:SDKInstanceClass) {
+		return this._GetSubtitleCount();
+	},
+	GetSubtitleLanguageAt(this:SDKInstanceClass, index: number) {
+		return this._GetSubtitleLanguageAt(index);
+	},
+	GetSubtitleLabelAt(this:SDKInstanceClass, index: number) {
+		return this._GetSubtitleLabelAt(index);
 	}
 };

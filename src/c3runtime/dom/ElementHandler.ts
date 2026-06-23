@@ -142,6 +142,10 @@
     // to suppress redundant bridge posts when the window hasn't changed.
     // Mirror of lastReportedLevel, but for DVR window data.
     lastDvr: { isDvr: boolean; seekableStart: number; seekableEnd: number };
+    // JSON snapshot of the last subtitle track list posted to the runtime.
+    // Used in Ready and TimeUpdate to suppress redundant bridge posts when the
+    // list hasn't changed (mirrors lastReportedLevel / lastDvr pattern).
+    lastSubtitleTracksJson: string;
     resizeObserver: ResizeObserver | null;
     controller: AbortController;
 
@@ -167,6 +171,7 @@
       this.subtitleSources = [];
       this.lastReportedLevel = -2; // sentinel: "not yet reported"
       this.lastDvr = { isDvr: false, seekableStart: 0, seekableEnd: -1 };
+      this.lastSubtitleTracksJson = "";
       this.resizeObserver = null;
       this.controller = new AbortController();
 
@@ -391,6 +396,9 @@
       // Reset playback-stability tracking for the new video.
       this.playbackStable = false;
       this.playbackBaseline = -1;
+      // Reset subtitle-track change-guard so the new video re-posts its list.
+      // Mirrors lastReportedLevel reset for quality.
+      this.lastSubtitleTracksJson = "";
 
       const player = new Player(this.BuildPlayerConfig(sources));
       this.player = player;
@@ -636,6 +644,11 @@
           this.lastDvr = dvr;
           this.PostStateToRuntime(dvr);
         }
+
+        // Poll subtitle tracks on each TimeUpdate — in-manifest tracks populate
+        // ~0.2s after Ready. The change-guard in PostSubtitleTracks prevents
+        // bridge spam when the list is stable.
+        this.PostSubtitleTracks();
       });
 
       player.on(PlayerEvent.VolumeUpdate, () => {
@@ -667,6 +680,10 @@
         this.PostPlaybackInfo(player);
         // Subtitle tracks are known once the manifest is parsed (by Ready).
         this.ApplySubtitles();
+        // Post the subtitle track list now that in-manifest tracks are available.
+        // PostSubtitleTracks is also called on each TimeUpdate because in-manifest
+        // tracks may populate ~0.2s after Ready; the change-guard prevents spam.
+        this.PostSubtitleTracks();
         // Apply the initial/post-rebuild chrome (control bar) state now that
         // plugins are live and the media_control plugin is available.
         this.ApplyChrome();
@@ -735,6 +752,38 @@
       const dvr = this.ReadDvrState(player);
       this.lastDvr = dvr;
       this.PostStateToRuntime(dvr);
+    }
+
+    // Build the combined subtitle track list: external (side-loaded) tracks
+    // first, then in-manifest tracks from the Clappr active playback.
+    // External tracks precede in-manifest so their index is stable regardless
+    // of whether the manifest has loaded yet.
+    private BuildSubtitleTrackList(): Array<{ language: string; label: string }> {
+      const closedCaptionsTracks =
+        this.player?.player?.core?.activePlayback?.closedCaptionsTracks;
+      return [
+        ...this.subtitleSources.map((s) => ({
+          language: s.language,
+          label: s.label,
+        })),
+        ...(closedCaptionsTracks ?? []).map((t) => ({
+          language: t.track?.language ?? t.name ?? "",
+          label: t.name ?? t.track?.label ?? "",
+        })),
+      ];
+    }
+
+    // Post the subtitle track list to the runtime when it has changed.
+    // Uses JSON serialisation as a change-guard to avoid spamming the bridge
+    // (mirrors lastReportedLevel for quality and lastDvr for DVR window data).
+    private PostSubtitleTracks() {
+      const list = this.BuildSubtitleTrackList();
+      const json = JSON.stringify(list);
+      if (json === this.lastSubtitleTracksJson) {
+        return;
+      }
+      this.lastSubtitleTracksJson = json;
+      this.PostStateToRuntime({ subtitleTracks: list });
     }
 
     DestroyPlayer() {

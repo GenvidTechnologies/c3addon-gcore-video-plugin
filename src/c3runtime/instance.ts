@@ -36,6 +36,9 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 	_seekableStart: number = 0;
 	_seekableEnd: number = -1;
 
+	// Subtitle track list — per-video; reset in _InitializeState.
+	_subtitleTracks: Array<{ language: string; label: string }> = [];
+
 	_playerState = "offline";
 	_audioState = "offline";
 
@@ -98,6 +101,9 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._isDvr = false;
 		this._seekableStart = 0;
 		this._seekableEnd = -1;
+
+		// Reset subtitle track list — per-video, like currentQuality.
+		this._subtitleTracks = [];
 
 		this._playerState = "offline";
 		this._audioState = "offline";
@@ -175,6 +181,13 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 
 			if (state.seekableEnd !== undefined) {
 				this._seekableEnd = state.seekableEnd as number;
+			}
+
+			// Subtitle track list — only sent by the DOM side when it changed.
+			// Fire the dedicated trigger so the game can rebuild its subtitle menu.
+			if (state.subtitleTracks !== undefined) {
+				this._subtitleTracks = state.subtitleTracks as Array<{ language: string; label: string }>;
+				this._trigger(C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds.OnSubtitlesAvailable);
 			}
 
 			// Mark the video as ready (loaded and playable) once its volume and
@@ -363,6 +376,22 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		return this._isDvr;
 	}
 
+	_HasSubtitles() {
+		return this._subtitleTracks.length > 0;
+	}
+
+	_GetSubtitleCount() {
+		return this._subtitleTracks.length;
+	}
+
+	_GetSubtitleLanguageAt(index: number) {
+		return this._subtitleTracks[index]?.language ?? "";
+	}
+
+	_GetSubtitleLabelAt(index: number) {
+		return this._subtitleTracks[index]?.label ?? "";
+	}
+
 	_saveToJson() {
 		// TODO: Add more state in it?
 		return {
@@ -416,7 +445,8 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 					{ name: prefix + "qualityCount", value: this._qualityCount },
 					{ name: prefix + "isDvr", value: this._isDvr },
 					{ name: prefix + "seekableStart", value: this._seekableStart },
-					{ name: prefix + "seekableEnd", value: this._seekableEnd }
+					{ name: prefix + "seekableEnd", value: this._seekableEnd },
+					{ name: prefix + "subtitleTracks", value: this._subtitleTracks.length }
 				]
 			},
 		];
