@@ -18,8 +18,8 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	SetVolume(this:SDKInstanceClass, level: number) {
 		this._SetVolume(level);
 	},
-	SetURL(this:SDKInstanceClass, url: string, subtitles: string, noLowLatency: boolean) {
-		this._SetURL(url, subtitles, noLowLatency);
+	SetURL(this:SDKInstanceClass, url: string, noLowLatency: boolean) {
+		this._SetURL(url, noLowLatency);
 	},
 	SetSubtitles(this:SDKInstanceClass, language: string) {
 		this._SetSubtitles(language);

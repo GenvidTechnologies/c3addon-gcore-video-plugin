@@ -93,10 +93,6 @@
 						"type": "string"
 					},
 					{
-						"id": "subtitles",
-						"type": "string"
-					},
-					{
 						"id": "no-low-latency",
 						"type": "boolean"
 					}

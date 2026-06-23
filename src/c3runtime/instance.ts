@@ -238,15 +238,9 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		};
 	}
 
-	_SetURL(url: string, subtitles: string, noLowLatency: boolean) {
-		// Empty string means "keep current subtitles" (Construct passes "" when the
-		// param is omitted); the boolean noLowLatency is always explicitly 0/1 from
-		// the ACE checkbox, so we must NOT fall back on falsy — false is a valid value.
-		if (subtitles === "") {
-			subtitles = this._subtitles;
-		}
+	_SetURL(url: string, noLowLatency: boolean) {
 		const urlChanged = this._url !== url;
-		if (!urlChanged && this._subtitles === subtitles && this._noLowLatency === noLowLatency) {
+		if (!urlChanged && this._noLowLatency === noLowLatency) {
 			return;
 		}
 
@@ -255,13 +249,13 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		// and then calls UpdateState() in domSide.js with the state object, where the button text
 		// is applied to the DOM element.
 		this._url = url;
-		this._subtitles = subtitles;
 		this._noLowLatency = noLowLatency;
 		if (urlChanged) {
-			// Side-loaded subtitle sources belong to a specific video; clear them
-			// when the video changes so the previous video's external subtitles
-			// don't leak onto the new one. (Add sources via AddSubtitleSource
-			// AFTER setting the URL.)
+			// Loading a video starts with a clean subtitle slate: subtitles are no
+			// longer a SetURL parameter. Use SetSubtitles / AddSubtitleSource after
+			// loading. This also stops the previous video's subtitles (in-manifest
+			// selection and side-loaded sources) from leaking onto the new one.
+			this._subtitles = "off";
 			this._subtitleSources = [];
 		}
 		this._updateElementState();
@@ -391,7 +385,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 				properties: [
 					{ name: prefix + "isInitialized", value: this._isInitialized },
 					{ name: prefix + "isReady", value: this._isReady },
-					{ name: prefix + "url", value: this._url, onedit: v => this._SetURL(v as string, this._subtitles, this._noLowLatency) },
+					{ name: prefix + "url", value: this._url, onedit: v => this._SetURL(v as string, this._noLowLatency) },
 					{ name: prefix + "subtitles", value: this._subtitles, onedit: v => this._SetSubtitles(v as string) },
 					{ name: prefix + "noLowLatency", value: this._noLowLatency, onedit: v => this._SetNoLowLatency(v as boolean) },
 					{ name: prefix + "enableChrome", value: this._enableChrome, onedit: v => this._SetEnableChrome(v as boolean) },

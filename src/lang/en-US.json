@@ -131,16 +131,12 @@
 					},
 					"set-url": {
 						"list-name": "Load Video",
-						"display-text": "Load video at {0} with language {1} with no low latency flag {2}",
-						"description": "Set the Video Player URL.",
+						"display-text": "Load video at {0} with no low latency flag {1}",
+						"description": "Set the Video Player URL. Loading a video clears the current subtitle selection and any side-loaded subtitle sources; use Set Subtitles / Add Subtitle Source afterwards.",
 						"params": {
 							"url": {
 								"name": "URL",
 								"desc": "The URL to load"
-							},
-							"subtitles": {
-								"name": "Subtitles",
-								"desc": "The subtitles language to use. 'off' to disable, leave empty to keep the current setting."
 							},
 							"no-low-latency": {
 								"name": "No low latency flag",
