@@ -37,6 +37,12 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Cnds =
 	HasSubtitles(this: SDKInstanceClass) {
 		return this._HasSubtitles();
 	},
+	HasSubtitleLanguage(this: SDKInstanceClass, lang: string) {
+		return this._HasSubtitleLanguage(lang);
+	},
+	HasSubtitleLabel(this: SDKInstanceClass, label: string) {
+		return this._HasSubtitleLabel(label);
+	},
 	OnSubtitlesAvailable(this: SDKInstanceClass) {
 		return true;
 	}

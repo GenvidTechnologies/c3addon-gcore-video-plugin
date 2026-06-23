@@ -49,6 +49,26 @@
 				"scriptName": "HasSubtitles"
 			},
 			{
+				"id": "has-subtitle-language",
+				"scriptName": "HasSubtitleLanguage",
+				"params": [
+					{
+						"id": "lang",
+						"type": "string"
+					}
+				]
+			},
+			{
+				"id": "has-subtitle-label",
+				"scriptName": "HasSubtitleLabel",
+				"params": [
+					{
+						"id": "label",
+						"type": "string"
+					}
+				]
+			},
+			{
 				"id": "on-subtitles-available",
 				"scriptName": "OnSubtitlesAvailable",
 				"isTrigger": true

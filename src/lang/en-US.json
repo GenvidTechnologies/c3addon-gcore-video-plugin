@@ -89,6 +89,28 @@
 						"display-text": "Has subtitles",
 						"description": "Whether any subtitle tracks are available (in-manifest or side-loaded)."
 					},
+					"has-subtitle-language": {
+						"list-name": "Has subtitle language",
+						"display-text": "Has subtitle language {0}",
+						"description": "Whether a subtitle track with the given language is available (case-insensitive).",
+						"params": {
+							"lang": {
+								"name": "Language",
+								"desc": "BCP-47 language code to look for (e.g. \"en\", \"fr\", \"en-ext\")."
+							}
+						}
+					},
+					"has-subtitle-label": {
+						"list-name": "Has subtitle label",
+						"display-text": "Has subtitle label {0}",
+						"description": "Whether a subtitle track with the given label is available (case-insensitive).",
+						"params": {
+							"label": {
+								"name": "Label",
+								"desc": "Subtitle track label to look for (e.g. \"English\")."
+							}
+						}
+					},
 					"on-subtitles-available": {
 						"list-name": "On subtitles available",
 						"display-text": "On subtitles available",

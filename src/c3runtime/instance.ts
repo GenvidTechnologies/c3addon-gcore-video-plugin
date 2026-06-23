@@ -380,6 +380,16 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		return this._subtitleTracks.length > 0;
 	}
 
+	_HasSubtitleLanguage(lang: string) {
+		const l = (lang ?? "").toLowerCase();
+		return this._subtitleTracks.some(t => t.language.toLowerCase() === l);
+	}
+
+	_HasSubtitleLabel(label: string) {
+		const l = (label ?? "").toLowerCase();
+		return this._subtitleTracks.some(t => t.label.toLowerCase() === l);
+	}
+
 	_GetSubtitleCount() {
 		return this._subtitleTracks.length;
 	}
