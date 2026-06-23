@@ -270,6 +270,19 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		this._updateElementState();
 	}
 
+	async _AddProjectSubtitleSource(file: string, language: string, label: string) {
+		// Resolve the project file to a runtime URL, then add it like a normal
+		// external subtitle source.
+		let url: string;
+		try {
+			url = await this.runtime.assets.getProjectFileUrl(file);
+		} catch (e) {
+			console.error("[GCoreVideo] Could not resolve project file", file, e);
+			return;
+		}
+		this._AddSubtitleSource(url, language, label);
+	}
+
 	_SetFallbackURLs(urls: string) {
 		const parsed = urls.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
 		// Only update and trigger a state refresh if the list actually changed.

@@ -39,6 +39,11 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 	AddSubtitleSource(this:SDKInstanceClass, url: string, language: string, label: string) {
 		this._AddSubtitleSource(url, language, label);
 	},
+	AddProjectSubtitleSource(this:SDKInstanceClass, file: string, language: string, label: string) {
+		// Async action (aces.json isAsync) — return the promise so Construct waits
+		// for the project file URL to resolve before continuing.
+		return this._AddProjectSubtitleSource(file, language, label);
+	},
 	Resize(this: SDKInstanceClass) {
 		this._Resize();
 	},

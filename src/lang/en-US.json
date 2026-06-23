@@ -202,7 +202,7 @@
 					"add-subtitle-source": {
 						"list-name": "Add Subtitle Source",
 						"display-text": "Add subtitle source {0} (language {1}, label {2})",
-						"description": "Add an external subtitle track (by URL) to the player. These are injected at construction time alongside any in-manifest subtitle tracks. Call before SetURL/LoadVideo takes effect.",
+						"description": "Add an external subtitle track (by URL) to the player, injected alongside any in-manifest tracks. Call AFTER Load Video (loading a video clears side-loaded sources); then select it with Set Subtitles using its language.",
 						"params": {
 							"url": {
 								"name": "URL",
@@ -210,7 +210,26 @@
 							},
 							"language": {
 								"name": "Language",
-								"desc": "BCP-47 language code for the track (e.g. \"en\", \"fr\")."
+								"desc": "BCP-47 language code for the track (e.g. \"en\", \"fr\"). Use a tag distinct from the in-manifest tracks (e.g. \"en-ext\")."
+							},
+							"label": {
+								"name": "Label",
+								"desc": "Human-readable label shown in the subtitle selector (e.g. \"English\")."
+							}
+						}
+					},
+					"add-project-subtitle-source": {
+						"list-name": "Add Project Subtitle Source",
+						"display-text": "Add project subtitle source {0} (language {1}, label {2})",
+						"description": "Add an external subtitle track from a project file. The file is resolved to a URL at runtime, then injected like Add Subtitle Source. Call AFTER Load Video; select it with Set Subtitles using its language.",
+						"params": {
+							"file": {
+								"name": "Project file",
+								"desc": "Name of the subtitle project file (e.g. \"subtitles.vtt\")."
+							},
+							"language": {
+								"name": "Language",
+								"desc": "BCP-47 language code for the track (e.g. \"en\", \"fr\"). Use a tag distinct from the in-manifest tracks (e.g. \"en-ext\")."
 							},
 							"label": {
 								"name": "Label",

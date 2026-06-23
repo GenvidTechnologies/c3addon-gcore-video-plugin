@@ -167,6 +167,25 @@
 				]
 			},
 			{
+				"id": "add-project-subtitle-source",
+				"scriptName": "AddProjectSubtitleSource",
+				"isAsync": true,
+				"params": [
+					{
+						"id": "file",
+						"type": "string"
+					},
+					{
+						"id": "language",
+						"type": "string"
+					},
+					{
+						"id": "label",
+						"type": "string"
+					}
+				]
+			},
+			{
 				"id": "resize",
 				"scriptName": "Resize"
 			},
