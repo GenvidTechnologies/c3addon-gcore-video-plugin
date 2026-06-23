@@ -282,12 +282,19 @@ verified against the specific stream types they target. Code comments in
 `ElementHandler.ts` reference this section (A-numbers below).
 
 **A5 — Low latency (`noLowLatency`):**
-Wired to `playback.hlsjsConfig.lowLatencyMode = false` when `noLowLatency` is
-`true` (set only when requested so the player default of `true` is preserved for
-normal streams). The GCore `playbackType` / `priorityTransport` config keys were
-evaluated but could not be confirmed to change behavior on a VOD stream and were
-not used. The actual effect of disabling low-latency mode is **unverified against
-a live low-latency stream**.
+For LIVE streams the low-latency choice is the **manifest path**, not just a
+player flag. GCore serves a live stream (`<client>.gvideo.io/<id>`) as:
+- low-latency (default): `cmaf/<id>/master.m3u8` (HLS / CMAF)
+- non-low-latency: `mpegts/<id>/master_mpegts.m3u8` (HLS / MPEG-TS)
+- DASH (low-latency): `cmaf/<id>/index.mpd`
+
+`ResolveManifest` selects **cmaf vs mpegts** from `noLowLatency` when resolving a
+`streams/` embed URL (a change rebuilds the player). As a secondary safeguard for
+a *direct* CMAF manifest URL (which can't be re-pathed),
+`playback.hlsjsConfig.lowLatencyMode = false` is also set when `noLowLatency` is
+true. VOD is served from `videos/<id>/master.m3u8` (low-latency N/A). The
+`playbackType` / `priorityTransport` config keys were evaluated but not used. The
+plugin defaults to **HLS**; DASH (`index.mpd`) is available but not selected.
 
 **A6 — DVR window (`enableDvr`, `GetSeekableStart` / `GetSeekableEnd`):**
 `enableDvr` sets `config.playbackType = "dvr"` at construction time, which

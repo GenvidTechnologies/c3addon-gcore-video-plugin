@@ -280,11 +280,6 @@
     // sources array. Extracted as a seam so construction-time config (quality,
     // latency, etc.) is layered here without touching CreatePlayer.
     private BuildPlayerConfig(sources: Array<{ source: string; mimeType: string }>): unknown {
-      // hls.js config applied at construction time. lowLatencyMode is the
-      // verified-reliable knob for disabling HLS low-latency mode; the GCore
-      // playbackType/priorityTransport keys were evaluated but could not be
-      // confirmed to change behavior on a VOD stream (see docs/gcore-player-api.md).
-      // Full effect verification against a live low-latency stream is pending.
       const hlsjsConfig: Record<string, unknown> = {
         // The player defaults hls.js to non-native subtitle rendering, whose
         // custom renderer doesn't display our selected track. Force native
@@ -293,8 +288,11 @@
         renderTextTracksNatively: true,
       };
       if (this.noLowLatency) {
-        // Disable hls.js low-latency mode; set only when requested so the
-        // player default (true) is preserved for normal streams.
+        // The PRIMARY noLowLatency mechanism is the manifest path: live streams
+        // resolve to the MPEG-TS (non-low-latency) manifest instead of CMAF (see
+        // ResolveManifest). This hls.js flag is a secondary safeguard for the
+        // case where a direct low-latency manifest URL is supplied (it can't be
+        // re-pathed) — disable LL-HLS mode so it isn't played low-latency.
         hlsjsConfig.lowLatencyMode = false;
       }
 
@@ -556,9 +554,18 @@
       const m = path.match(/\/(videos|streams)\/((\d+)_[^/]+?)\/?$/);
       if (m) {
         const [, kind, id, clientId] = m;
-        // Live ("streams/" embed) manifests are served from the CDN "cmaf/" path.
-        const cdnPath = kind === "streams" ? "cmaf" : kind;
-        return `https://${clientId}.gvideo.io/${cdnPath}/${id}/master.m3u8`;
+        if (kind === "streams") {
+          // Live streams: GCore serves a low-latency manifest from the CMAF path
+          // and a non-low-latency manifest from the MPEG-TS path. The
+          // noLowLatency flag selects between them (this is the real mechanism;
+          // a change rebuilds the player via NeedsRebuild). DASH is also
+          // available at cmaf/<id>/index.mpd but is not used here.
+          return this.noLowLatency
+            ? `https://${clientId}.gvideo.io/mpegts/${id}/master_mpegts.m3u8`
+            : `https://${clientId}.gvideo.io/cmaf/${id}/master.m3u8`;
+        }
+        // VOD is served from the "videos/" path.
+        return `https://${clientId}.gvideo.io/${kind}/${id}/master.m3u8`;
       }
       // Fallback for non-standard embed URLs: scrape the manifest the embed
       // page references directly.
