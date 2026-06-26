@@ -148,6 +148,11 @@
     lastSubtitleTracksJson: string;
     resizeObserver: ResizeObserver | null;
     controller: AbortController;
+    // Awaitable load promise state: resolved at PlayerEvent.Ready for the
+    // most-recently-started load. null when no load is pending.
+    loadReadyResolve: ((v: JSONValue) => void) | null;
+    loadGen: number;
+    loadReadyTimer: ReturnType<typeof setTimeout> | null;
 
     constructor(
       element: HTMLElement,
@@ -174,6 +179,9 @@
       this.lastSubtitleTracksJson = "";
       this.resizeObserver = null;
       this.controller = new AbortController();
+      this.loadReadyResolve = null;
+      this.loadGen = 0;
+      this.loadReadyTimer = null;
 
       this.Setup();
     }
@@ -222,7 +230,21 @@
       this.PostToRuntime("error", { error: { category, message } });
     }
 
-    UpdateState(e: JSONObject) {
+    // Settle the current load promise (generation-guarded). Called from the
+    // Ready/Error event handlers and the 15s timeout. A stale player's late
+    // Ready/Error (generation mismatch) is a safe no-op via the guard.
+    private _settleLoadPromise(gen: number): void {
+      if (this.loadGen !== gen) return;
+      if (this.loadReadyTimer !== null) {
+        clearTimeout(this.loadReadyTimer);
+        this.loadReadyTimer = null;
+      }
+      const resolve = this.loadReadyResolve;
+      this.loadReadyResolve = null;
+      resolve?.(null);
+    }
+
+    UpdateState(e: JSONObject): boolean {
       const url = (e["url"] ?? "") as string;
       // Subtitles are selected via the player's closed-caption tracks (not a URL
       // query param anymore — see ApplySubtitles).
@@ -243,10 +265,12 @@
           console.debug("Loading", url);
           this.PostStateToRuntime({ playerState: "loading" });
           this.CreatePlayer(url);
+          return true;
         } else {
           console.debug("Offloading video player");
           this.DestroyPlayer();
           this.PostStateToRuntime({ playerState: "offline" });
+          return false;
         }
       } else {
         // URL unchanged (e.g. only the subtitle language changed) — apply it to
@@ -254,6 +278,7 @@
         this.ApplySubtitles();
         // A live chrome toggle (no URL change) takes effect immediately.
         this.ApplyChrome();
+        return false;
       }
     }
 
@@ -340,6 +365,7 @@
 
     async CreatePlayer(url: string) {
       console.log("Setting up new player", url);
+      const myGen = this.loadGen;
 
       let Player: GCorePlayerConstructor;
       try {
@@ -347,6 +373,7 @@
       } catch (err) {
         console.error("[video player] Failed to load GCore player", err);
         this.PostErrorToRuntime("gcore", `Failed to load player: ${err}`);
+        this._settleLoadPromise(myGen);
         return;
       }
 
@@ -374,6 +401,7 @@
       } catch (err) {
         console.error("[video player] Failed to resolve manifest", err);
         this.PostErrorToRuntime("gcore", `Could not resolve video manifest: ${err}`);
+        this._settleLoadPromise(myGen);
         return;
       }
 
@@ -400,7 +428,7 @@
 
       const player = new Player(this.BuildPlayerConfig(sources));
       this.player = player;
-      this.RegisterEvents(player);
+      this.RegisterEvents(player, myGen);
       player.attachTo(this.element);
       // Size the player to the Construct-managed container, and keep it in sync
       // when the instance is resized (Construct resizes our <div>, but the
@@ -592,12 +620,13 @@
       return "application/x-mpegurl";
     }
 
-    RegisterEvents(player: GCorePlayer) {
+    RegisterEvents(player: GCorePlayer, loadGenForPlayer: number) {
       player.on(PlayerEvent.Error, (err) => {
         console.error("VideoPlayer API Error", err);
         const errObj = err as { message?: string } | null | undefined;
         const message = errObj?.message ?? String(err);
         this.PostErrorToRuntime("gcore", message);
+        this._settleLoadPromise(loadGenForPlayer);
       });
 
       player.on(PlayerEvent.Play, () => {
@@ -710,6 +739,8 @@
         // ready. The seekable window (if any) should be known at this point.
         // PostDvrState also updates lastDvr so TimeUpdate suppression stays in sync.
         this.PostDvrState(player);
+        // Resolve the awaitable load promise now that the player is ready.
+        this._settleLoadPromise(loadGenForPlayer);
       });
     }
 
@@ -813,10 +844,45 @@
     }
 
     Destroy() {
+      // Settle any pending load promise so a destroyed element does not hang
+      // an awaiting action.
+      if (this.loadReadyTimer !== null) {
+        clearTimeout(this.loadReadyTimer);
+        this.loadReadyTimer = null;
+      }
+      const resolve = this.loadReadyResolve;
+      this.loadReadyResolve = null;
+      resolve?.(null);
       // remove event listeners
       this.controller.abort();
       this.currentUrl = "";
       this.DestroyPlayer();
+    }
+
+    // Awaitable form of LoadVideo. Returns a Promise that resolves to null at
+    // PlayerEvent.Ready (or settles immediately on error/timeout/superseded).
+    // The 15s timeout guarantees the event sheet never hangs. Resolving means
+    // the load attempt is done, not that it succeeded — branch via On error /
+    // Is ready for success/failure.
+    OnLoadVideo(data: JSONObject): Promise<JSONValue> {
+      // Supersede any pending promise from a previous load so the prior
+      // awaiter is not left hanging.
+      if (this.loadReadyTimer !== null) {
+        clearTimeout(this.loadReadyTimer);
+        this.loadReadyTimer = null;
+      }
+      const prevResolve = this.loadReadyResolve;
+      this.loadReadyResolve = null;
+      prevResolve?.(null);
+
+      const myGen = ++this.loadGen;
+      const willLoad = this.UpdateState(data);
+      if (!willLoad) return Promise.resolve(null);
+
+      return new Promise<JSONValue>((resolve) => {
+        this.loadReadyResolve = resolve;
+        this.loadReadyTimer = setTimeout(() => this._settleLoadPromise(myGen), 15000);
+      });
     }
 
     OnPlay() {

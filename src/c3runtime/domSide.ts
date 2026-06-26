@@ -29,6 +29,7 @@
 		OnResize(): void;
 		UpdateState(e: JSONObject): void;
 		Destroy(): void;
+		OnLoadVideo(e: JSONObject): Promise<JSONValue>;
 	};
 
 	interface IElementHandlerMap {
@@ -55,6 +56,10 @@
 				["resize", (elem: HTMLElement) => this._handlers.Get(elem)?.OnResize()],
 			];
 			handlers.map(([e, h]) => this.AddDOMElementMessageHandler(e, (el, data) => h(el as HTMLElement, data as JSONObject)));
+			// loadVideo must be registered separately because it returns a
+			// Promise<JSONValue> that must be forwarded to the runtime's async
+			// bridge. The void-typed handlers map above would swallow it.
+			this.AddDOMElementMessageHandler("loadVideo", (el, data) => this._handlers.Get(el as HTMLElement)?.OnLoadVideo(data as JSONObject));
 		}
 
 		CreateElement(elementId: number, e: JSONObject) {
