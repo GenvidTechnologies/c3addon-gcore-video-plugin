@@ -105,6 +105,19 @@
     </div>
   </div>
 
+  <!-- ── C5: Load Timing Probe ─────────────────────────────────────────── -->
+  <div class="probe-section">
+    <h3>C5 – Load Timing Probe</h3>
+    <p style="margin:.25rem 0;font-size:.85rem">
+      Click <b>Load</b> first; milestones auto-log to the console + log panel.
+      Then use the buttons below to probe seek and subtitle readiness at each stage.
+    </p>
+    <div class="row">
+      <button id="c5SeekAtReady">Q-seek: seek at Ready</button>
+      <button id="c5SubAtReady">Q-subs: set subtitle at Ready</button>
+    </div>
+  </div>
+
   <!-- ── D4: External (side-loaded) subtitles ────────────────────────── -->
   <div class="probe-section">
     <h3>D4 – External subtitle source (side-loaded VTT)</h3>
@@ -137,6 +150,16 @@
     const logEl = document.getElementById("log");
     let player = null;
     let _mod = null; // cached module reference for re-use after first import
+
+    // ── C5: Load Timing Probe state ────────────────────────────────────────
+    let c5_t0 = null;                // performance.now() at the moment Load is clicked
+    let c5_logged_module = false;    // guard: C5 t_module emitted once per load
+    let c5_logged_ready = false;     // guard: C5 t_ready emitted once per load
+    let c5_logged_first_tu = false;  // guard: C5 t_first_timeupdate emitted once per load
+    let c5_first_tu_current = null;  // first TimeUpdate current>0 (playback baseline)
+    let c5_logged_stable = false;    // guard: C5 t_playback_stable emitted once per load
+    let c5_logged_cc = false;        // guard: C5 t_cc_tracks_populated emitted once per load
+    let c5_last_tu_current = null;   // most recent TimeUpdate current value (for Q-seek)
 
     function log(...args) {
       logEl.textContent += args.map((a) =>
@@ -394,6 +417,63 @@
       setTimeout(dumpExtTracks, 500);
     };
 
+    // ── C5: Load Timing Probe buttons ─────────────────────────────────────
+
+    // Q-seek: seek to a safe target offset and report whether it landed.
+    document.getElementById("c5SeekAtReady").onclick = () => {
+      if (!player || !activePlayback()) { log("C5 Q-seek: no player/playback yet"); return; }
+      const pb = activePlayback();
+      let target;
+      let durDesc;
+      const dur = typeof pb.getDuration === "function" ? pb.getDuration() : null;
+      if (typeof dur === "number" && isFinite(dur) && dur > 4) {
+        // VOD: seek to mid-point capped at 30s
+        target = Math.min(30, dur / 2);
+        durDesc = `dur=${dur.toFixed(2)}s`;
+      } else {
+        // Live or Infinity: small nudge from last-known current position
+        const from = c5_last_tu_current ?? 0;
+        target = from + 2;
+        durDesc = `live/Infinity nudge from current=${from.toFixed(2)}s`;
+      }
+      log(`C5 Q-seek target=${target.toFixed(2)}s (${durDesc})`);
+      try { player.seek(target); } catch (e) { log("C5 Q-seek err:", e.message); }
+      setTimeout(() => {
+        const pb2 = activePlayback();
+        const raw = (c5_last_tu_current !== null)
+          ? c5_last_tu_current
+          : (typeof pb2?.getCurrentTime === "function" ? pb2.getCurrentTime() : null);
+        const landedStr = (typeof raw === "number") ? `${raw.toFixed(3)}s` : String(raw ?? "unavailable");
+        const clamped = typeof raw === "number" && Math.abs(raw) < 0.5;
+        log(`C5 Q-seek landed current=${landedStr}${clamped ? " (CLAMPED to ~0 — seek discarded)" : ""}`);
+      }, 800);
+    };
+
+    // Q-subs: select the first in-manifest CC track and verify it sticks.
+    document.getElementById("c5SubAtReady").onclick = () => {
+      if (!player || !activePlayback()) { log("C5 Q-subs: no player/playback yet"); return; }
+      const tracks = ccTracks();
+      if (tracks.length === 0) { log("C5 Q-subs: no cc tracks yet"); return; }
+      const t = tracks[0];
+      const lang = t.track?.language ?? t.language ?? "?";
+      log(`C5 Q-subs selected id=${t.id} lang=${lang}`);
+      // selectTrack calls pb.setTextTrack(id) and schedules dumpVideoTextTracks at +1200ms
+      selectTrack(t.id);
+      // At +3000ms dump <video>.textTracks again and emit a structured C5 result line
+      setTimeout(() => {
+        let showing = false;
+        let cues = 0;
+        const v = document.querySelector("#player video");
+        if (v) {
+          for (const tt of v.textTracks) {
+            if (tt.mode === "showing") { showing = true; cues += tt.cues ? tt.cues.length : 0; }
+          }
+        }
+        dumpVideoTextTracks();
+        log(`C5 Q-subs result: <video> showing=${showing} cues=${cues}`);
+      }, 3000);
+    };
+
     // ── Shared helpers ─────────────────────────────────────────────────
 
     // A2: attach error handler that logs RAW shape
@@ -427,6 +507,16 @@
 
     // ── Main Load ──────────────────────────────────────────────────────
     document.getElementById("load").onclick = async () => {
+      // C5: capture high-res timing baseline; reset all per-load milestone flags
+      c5_t0 = performance.now();
+      c5_logged_module = false;
+      c5_logged_ready = false;
+      c5_logged_first_tu = false;
+      c5_first_tu_current = null;
+      c5_logged_stable = false;
+      c5_logged_cc = false;
+      c5_last_tu_current = null;
+
       logEl.textContent = "";
       const url = document.getElementById("url").value.trim();
       log("importing", PLAYER_URL, "...");
@@ -434,6 +524,11 @@
       try { mod = await import(PLAYER_URL); }
       catch (e) { log("MODULE IMPORT FAILED:", e.message, "\n(serve this page over http://, not file://)"); return; }
       _mod = mod;
+      // C5 t_module: module import resolved (dynamic import() returned)
+      if (!c5_logged_module && c5_t0 !== null) {
+        c5_logged_module = true;
+        log(`C5 t_module +${(performance.now() - c5_t0).toFixed(1)}ms`);
+      }
 
       // ── A7: Log available exports ────────────────────────────────────
       log("A7 module exports (Object.keys(mod)):", Object.keys(mod).join(", "));
@@ -505,9 +600,51 @@
 
       player.on("ready", () => {
         log("=== READY === (subtitle tracks appear ~0.2s later; selection sticks once playback is ~2s in)");
+        // C5 t_ready: player "ready" event fired
+        if (!c5_logged_ready && c5_t0 !== null) {
+          c5_logged_ready = true;
+          log(`C5 t_ready +${(performance.now() - c5_t0).toFixed(1)}ms`);
+        }
         log("activePlayback.name:", activePlayback()?.name ?? "unavailable");
         rebuildSubtitleButtons();
       });
+      // C5: attach TimeUpdate listener to record load-timing milestones.
+      // Mirror ElementHandler.ts subscription: player.on(PlayerEvent.TimeUpdate, (e) => { const {current,total}=e; ... })
+      // Fall back to the string "timeupdate" if PlayerEvent.TimeUpdate is undefined.
+      const c5TuEvent = PlayerEvent && PlayerEvent.TimeUpdate !== undefined
+        ? PlayerEvent.TimeUpdate : "timeupdate";
+      player.on(c5TuEvent, (e) => {
+        const current = (e && typeof e.current === "number") ? e.current : null;
+        if (current !== null) c5_last_tu_current = current;
+
+        // C5 t_first_timeupdate: first TimeUpdate where current > 0
+        if (!c5_logged_first_tu && current !== null && current > 0 && c5_t0 !== null) {
+          c5_logged_first_tu = true;
+          c5_first_tu_current = current;
+          log(`C5 t_first_timeupdate +${(performance.now() - c5_t0).toFixed(1)}ms current=${current.toFixed(3)}s`);
+        }
+
+        // C5 t_playback_stable: first TimeUpdate where current - baseline >= 2s
+        // (mirrors ElementHandler.ts:624-627 playbackBaseline/playbackStable logic)
+        if (c5_logged_first_tu && !c5_logged_stable && current !== null &&
+            c5_first_tu_current !== null && c5_t0 !== null &&
+            current - c5_first_tu_current >= 2) {
+          c5_logged_stable = true;
+          log(`C5 t_playback_stable +${(performance.now() - c5_t0).toFixed(1)}ms current=${current.toFixed(3)}s baseline=${c5_first_tu_current.toFixed(3)}s`);
+        }
+
+        // C5 t_cc_tracks_populated: first moment ccTracks().length > 0
+        // (harness comment: tracks appear ~0.2s after ready; poll here to catch it)
+        if (!c5_logged_cc && c5_t0 !== null) {
+          const tracks = ccTracks();
+          if (tracks.length > 0) {
+            c5_logged_cc = true;
+            const langs = tracks.map((t) => t.track?.language ?? t.language ?? "?").join(", ");
+            log(`C5 t_cc_tracks_populated +${(performance.now() - c5_t0).toFixed(1)}ms count=${tracks.length} langs=[${langs}]`);
+          }
+        }
+      });
+
       player.attachTo(document.getElementById("player"));
       log("attached; autoplay starting...");
     };

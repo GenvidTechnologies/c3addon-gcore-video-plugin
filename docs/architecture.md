@@ -38,6 +38,25 @@ state (`playerState`, `audioState`, `currentVolume`, `duration`,
 `currentPlaybackTime`). Note `instance.ts` treats `currentVolume === 0` as
 muted.
 
+The bridge has **two modes**:
+
+- **Fire-and-forget (the default).** `_postToDOMElement(handler, data)` and
+  `_updateElementState()` return `void`. Results, if any, flow back later as
+  *uncorrelated* broadcast `state-changed` / `error` messages. This is how every
+  intent above works.
+- **Request/response (awaitable).** `_postToDOMElementAsync(handler, data)`
+  returns a `Promise<JSONValue>` that resolves with whatever the matching DOM-side
+  handler returns — and a DOM handler may return a `Promise`, so the runtime
+  promise stays pending until the DOM side settles it. This is what makes
+  `Load Video` (`set-url`, an `isAsync` ACE) awaitable: its `loadVideo` handler
+  resolves only once the player reaches `Ready`. Register such a handler
+  *separately* from the void-typed intent handlers so its returned promise is
+  forwarded rather than swallowed. See
+  [`decisions/0002-awaitable-load-video.md`](decisions/0002-awaitable-load-video.md).
+
+  Making an existing action `isAsync` is back-compatible: Construct runs every
+  action inside a promise, so event sheets that don't await it are unaffected.
+
 ## Why this matters: player-API coupling is isolated to one file
 
 Because the bridge protocol is generic, **all coupling to the GCore player API

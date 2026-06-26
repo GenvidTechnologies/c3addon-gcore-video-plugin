@@ -19,7 +19,10 @@ C3.Plugins.Genvidtech_GCoreVideoPlugin.Acts = {
 		this._SetVolume(level);
 	},
 	SetURL(this:SDKInstanceClass, url: string, noLowLatency: boolean) {
-		this._SetURL(url, noLowLatency);
+		// Async action (aces.json isAsync) — return the promise so Construct waits
+		// for the load to reach Ready (or settle on error/timeout) before running
+		// the next action. Existing event sheets that don't await are unaffected.
+		return this._SetURL(url, noLowLatency);
 	},
 	SetSubtitles(this:SDKInstanceClass, language: string) {
 		this._SetSubtitles(language);

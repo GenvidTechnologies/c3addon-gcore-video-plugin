@@ -60,3 +60,6 @@ build*/
 
 # Local planning artifact (genvid-dev plan-task)
 plan.md
+
+# Playwright MCP scratch (snapshots, console logs) from empirical testing
+.playwright-mcp/

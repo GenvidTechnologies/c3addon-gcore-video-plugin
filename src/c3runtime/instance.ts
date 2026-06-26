@@ -251,16 +251,18 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 		};
 	}
 
-	_SetURL(url: string, noLowLatency: boolean) {
+	_SetURL(url: string, noLowLatency: boolean): Promise<JSONValue> {
 		const urlChanged = this._url !== url;
 		if (!urlChanged && this._noLowLatency === noLowLatency) {
-			return;
+			// No-op: nothing to load, so the awaitable resolves immediately.
+			return Promise.resolve(null);
 		}
 
-		// Update the locally stored text, and call UpdateElementState().
-		// This calls GetElementState() - which contains the button text as part of the state -
-		// and then calls UpdateState() in domSide.js with the state object, where the button text
-		// is applied to the DOM element.
+		// Update the locally stored state, then drive the load over the async DOM
+		// bridge. Unlike _updateElementState() (fire-and-forget), the "loadVideo"
+		// handler returns a promise that resolves once the player reaches Ready
+		// (or settles on error/timeout/supersession), so an event sheet can await
+		// Load Video before applying post-load settings (subtitles, seek, quality).
 		this._url = url;
 		this._noLowLatency = noLowLatency;
 		if (urlChanged) {
@@ -271,7 +273,7 @@ class GCoreVideoInstance extends globalThis.ISDKDOMInstanceBase {
 			this._subtitles = "off";
 			this._subtitleSources = [];
 		}
-		this._updateElementState();
+		return this._postToDOMElementAsync("loadVideo", this._getElementState());
 	}
 
 	_GetURL() {

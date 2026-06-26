@@ -38,8 +38,37 @@ DASH is available at `<clientId>.gvideo.io/cmaf/<id>/index.mpd` but the plugin
 uses HLS by default.
 
 **Loading resets subtitle state.** Every call to Load Video clears the active
-subtitle selection and any side-loaded subtitle sources. Always call subtitle
-actions after loading the video.
+subtitle selection and any side-loaded subtitle sources.
+
+### Awaiting load completion
+
+Load Video is an awaitable (async) action. Actions placed after it on the same
+event run after the player is set up and ready — manifest parsed, quality levels
+and seekable range known — so post-load settings reliably take effect.
+
+The await settles on every terminal outcome:
+
+- **Ready (success):** manifest parsed; quality levels and seekable range available.
+- **Error:** use the `On error` trigger to branch on failure.
+- **Timeout (~15 s):** treated as "done", not a failure.
+- **Supersession:** a second Load Video immediately resolves the first await.
+
+The await means "the load attempt is done", not "it succeeded." Use `On error` /
+`Is ready` to distinguish success from failure.
+
+```
+Event: On start of layout
+  Action: GCoreVideoPlugin → Load Video("https://player.gvideo.co/videos/421804_abc123", false)
+  Action: GCoreVideoPlugin → Set Subtitles("en")          ← applied once tracks are available
+  Action: GCoreVideoPlugin → Set playback time(30)         ← seekable range is known at ready
+  Action: GCoreVideoPlugin → Set Quality(0)                ← quality levels are known at ready
+```
+
+> **Subtitles note:** A Set Subtitles issued right after Load Video is remembered
+> and applied once playback has advanced ~2 s (an hls.js subtitle-display settle).
+> The Load Video await does not block for that ~2 s. Loading also clears the active
+> subtitle selection and any side-loaded sources, so subtitle actions must always
+> come after Load Video.
 
 **Multi-source failover.** Call **Set Fallback URLs** before or after Load Video
 with a comma- or newline-separated list of backup source URLs. The player tries
@@ -191,13 +220,18 @@ or on `On state changed`.
 **Quality menu pattern:**
 
 ```
-Trigger: GCoreVideoPlugin → Is ready
-  Repeat GCoreVideoPlugin.GetQualityCount times
-    Action: Add quality option for level loopindex
+Event: GCoreVideoPlugin → On state changed
+  Condition: GCoreVideoPlugin → Is ready
+    Repeat GCoreVideoPlugin.GetQualityCount times
+      Action: Add quality option for level loopindex
 
 Event: Player clicks quality item
   Action: GCoreVideoPlugin → Set Quality(clickedItem.level)
 ```
+
+Alternatively, now that Load Video is awaitable, you can build the quality menu
+on the action line immediately after Load Video (see
+[Awaiting load completion](#awaiting-load-completion) in section 1).
 
 ---
 

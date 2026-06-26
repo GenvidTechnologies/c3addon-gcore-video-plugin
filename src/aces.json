@@ -116,6 +116,7 @@
 			{
 				"id": "set-url",
 				"scriptName": "SetURL",
+				"isAsync": true,
 				"params": [
 					{
 						"id": "url",
