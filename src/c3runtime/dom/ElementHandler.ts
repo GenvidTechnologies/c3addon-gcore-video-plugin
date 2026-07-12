@@ -117,6 +117,11 @@
 
   class ElementHandler {
     element: HTMLElement;
+    // The inner container the GCore player attaches into. It fills `element`
+    // (the Construct-managed outer <div>) but is a distinct node so the outer
+    // one is never empty — see domSide.ts CreateElement and GitHub #11. Sizing,
+    // event handling and resize-observation all still key off the outer element.
+    playerContainer: HTMLElement;
     elementId: number;
     handler: IDOMElementHandler;
     player: GCorePlayer | null;
@@ -156,10 +161,12 @@
 
     constructor(
       element: HTMLElement,
+      playerContainer: HTMLElement,
       elementId: number,
       domHandler: IDOMElementHandler
     ) {
       this.element = element;
+      this.playerContainer = playerContainer;
       this.elementId = elementId;
       this.handler = domHandler;
       this.player = null;
@@ -429,7 +436,9 @@
       const player = new Player(this.BuildPlayerConfig(sources));
       this.player = player;
       this.RegisterEvents(player, myGen);
-      player.attachTo(this.element);
+      // Attach into the inner container, not the Construct-managed outer <div>,
+      // so the outer one is never emptied by the player (GitHub #11).
+      player.attachTo(this.playerContainer);
       // Size the player to the Construct-managed container, and keep it in sync
       // when the instance is resized (Construct resizes our <div>, but the
       // player won't follow on its own).
