@@ -14,3 +14,4 @@ written so the plugin's skills can discover them.
 
 - [decisions/0001-additive-v2-api-expansion.md](decisions/0001-additive-v2-api-expansion.md) — additive-only ACE expansion, construction-time rebuild discipline, and empirical verification mandate for the full v2 API conversion (issue #1).
 - [decisions/0002-awaitable-load-video.md](decisions/0002-awaitable-load-video.md) — awaitable Load Video: resolve-at-Ready contract, load-readiness vs. subtitle-display-settle separation, isAsync back-compat under ADR-0001, and settle-on-all-outcomes (error/timeout/superseded) design.
+- [decisions/0003-construct-dom-container-structure.md](decisions/0003-construct-dom-container-structure.md) — two-`<div>` container structure (outer self-contained wrapper + inner player-attach container) that keeps Construct's HTML-layers wrapper indexing aligned (issue #11).

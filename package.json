@@ -1,6 +1,6 @@
 {
   "name": "c3addon-gcore-video-player",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Construct3 GCore Video Player add-on by Genvid",
   "license": "MIT-0",
   "devDependencies": {

@@ -68,9 +68,31 @@
 			// The new GCore Player attaches to a container element and injects its
 			// own <video> into it, so we hand Construct a <div> to position rather
 			// than an <iframe>.
+			//
+			// Construct's HTML-layers bookkeeping desyncs when the HTML object's
+			// element is an *empty* <div> at layout-build time: the per-HTML-layer
+			// wrapper indexing that "Set layer (in)visible" relies on misaligns and
+			// the wrong wrapper gets display:none (GitHub #11). So the outer element
+			// must be self-contained and non-empty from creation. We give the GCore
+			// player its own inner <div> to attach into — the outer <div> always has
+			// a child, and it clips the player to the box Construct sized for us.
 			const element = document.createElement("div");
+			element.style.overflow = "hidden";
+
+			// Inner container the GCore player attaches into. It tracks the outer
+			// box (absolute inset:0) so the player fills the Construct-managed area.
+			// Keeping the player out of the outer <div> also means whatever the
+			// player does to its own container never empties the outer one.
+			const playerContainer = document.createElement("div");
+			playerContainer.style.position = "absolute";
+			playerContainer.style.top = "0";
+			playerContainer.style.left = "0";
+			playerContainer.style.width = "100%";
+			playerContainer.style.height = "100%";
+			element.appendChild(playerContainer);
+
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const handler = new (globalThis as any).Genvidtech_GCoreVideoPlugin_ElementHandler(element, elementId, this) as IElementHandler;
+			const handler = new (globalThis as any).Genvidtech_GCoreVideoPlugin_ElementHandler(element, playerContainer, elementId, this) as IElementHandler;
 			this._handlers.Set(element, handler);
 
 			// The create message includes the state retrieved by GetElementState() in instance.js,
