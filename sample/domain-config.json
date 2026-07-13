@@ -1,0 +1,15 @@
+{
+  "domains": {
+    "VideoPlayerSample": {
+      "description": "GCore video-player addon sample/test C3 project — demonstrates loading, playback, and layout switching.",
+      "eventSheetDirs": [],
+      "layoutDirs": []
+    }
+  },
+  "overrides": {
+    "eventSheets/VideoPlayerEvents.json": "VideoPlayerSample",
+    "eventSheets/SecondEvents.json": "VideoPlayerSample",
+    "layouts/MainLayout.json": "VideoPlayerSample",
+    "layouts/SecondLayout.json": "VideoPlayerSample"
+  }
+}
