@@ -24,6 +24,6 @@
     "comparisonQuery": "gh issue list --state all -L 500 --json number,title,labels,state",
     "readOne": "gh issue view {id} --json number,title,body,labels,comments",
     "triagedLabel": "triaged",
-    "needsInfoLabel": "needs-info"
+    "needsInfoLabel": "question"
   }
 }
