@@ -65,9 +65,42 @@ and the message bridge know nothing about GCore specifics.
 
 Practical consequence: migrating to a new player API (as in the v2 port) is
 almost entirely a rewrite of `ElementHandler.ts`, plus minor edits to the
-container element type in `domSide.ts`/`ElementHandlerMap.ts` and the dependency
-declaration in `plugin.ts`. Resist the urge to thread API details through the
-runtime side — keep `ElementHandler.ts` the single seam.
+container element in `domSide.ts`/`ElementHandlerMap.ts` (subject to the
+constraint below) and the dependency declaration in `plugin.ts`. Resist the urge
+to thread API details through the runtime side — keep `ElementHandler.ts` the
+single seam.
 
 See [`gcore-player-api.md`](gcore-player-api.md) for the current player API
 surface used by `ElementHandler.ts`.
+
+## The container element: outer wrapper + inner player container
+
+`domSide.ts` `CreateElement` hands Construct a **two-`<div>` structure**, and the
+shape is load-bearing:
+
+- The **outer `<div>`** is the element Construct positions and manages as its HTML
+  object. It is `overflow:hidden` (self-contained) and **non-empty from creation**
+  — it always holds the inner container as a child.
+- The **inner `<div>`** tracks the outer box (`position:absolute; inset 0`) and is
+  what the GCore player attaches into (`player.attachTo(this.playerContainer)`).
+  `ElementHandler` keeps `element` (outer) for sizing, event handling and
+  resize-observation, and `playerContainer` (inner) purely as the attach target.
+
+**Why not attach straight into the outer `<div>`?** Construct's
+[HTML-layers](https://www.construct.net/en/make-games/manuals/construct-3/tips-and-guides/html-layers)
+system interleaves canvas layers and HTML objects into a stack of `<canvas>`
+elements plus `<div>` wrappers, and its per-HTML-layer wrapper indexing desyncs
+when the HTML object's element is an **empty `<div>` at layout-build time** — so
+`Set layer (in)visible` toggles `display:none` on the *wrong* wrapper. The v2
+player only injects its `<video>` asynchronously (when a video loads), so a bare
+container is empty at build time. Giving the player its own inner container keeps
+the outer element non-empty regardless of what the player does to its own node,
+which keeps the wrapper indexing aligned (GitHub #11).
+
+**Constraint for future changes:** whatever element `CreateElement` returns to
+Construct must be non-empty and self-contained from the moment it's created — do
+not revert to handing Construct a bare, initially-empty `<div>`. Note this class
+of HTML-layer bug reproduces **only inside Construct**; the
+[`test/player-test.html`](../test/player-test.html) harness has no HTML-layer
+bookkeeping to break, so it verifies the player attaches/plays but cannot verify
+the visibility fix — that must be checked in a real Construct project.
