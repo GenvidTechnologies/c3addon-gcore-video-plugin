@@ -63,4 +63,21 @@ test in Construct 3).
 - Base branch: `main`.
 - Branch naming: `BUR-<ticket>-<kebab-description>` (e.g. `BUR-4919-no-low-latency`).
   Use `BUR-0000-...` when there is no associated ticket.
-- Remote: GitHub (`genvid-holdings/c3addon-gcore-video-plugin`).
+- Remote: GitHub (`GenvidTechnologies/c3addon-gcore-video-plugin`). A clone made
+  before the org rename may still have `origin` pointing at the old
+  `genvid-holdings` URL — `git push` follows the redirect, but `gh` does not (it
+  fails PR creation with `No commits between GenvidTechnologies:main and
+  genvid-holdings:<branch>`). Fix with
+  `git remote set-url origin git@github.com:GenvidTechnologies/c3addon-gcore-video-plugin.git`.
+
+## Releasing
+
+- The addon version is the 4-part string in `src/addon.json` (e.g. `2.1.1.0`);
+  `package.json` carries the matching 3-part `version`.
+- To release: push a git tag matching that version
+  (`git tag -a 2.1.1.0 -m "..." && git push origin 2.1.1.0`).
+- `release.yml` (trigger: tags matching `[0-9]*.[0-9]*.*`) lints, builds, zips,
+  and publishes the `.c3addon` as a GitHub release with auto-generated notes.
+- A version bump merges **untagged** — bumping the version and tagging the release
+  are separate, explicit steps. Check `git tag` against `src/addon.json` if unsure
+  whether the current version has shipped.
