@@ -26,7 +26,7 @@ Use the demo manifest with subtitle tracks for testing subtitles:
 ## What it demonstrates (and why the plugin does what it does)
 
 These are the non-obvious facts the harness encodes — see
-[`../docs/gcore-player-api.md`](../docs/gcore-player-api.md) for the full write-up:
+[`../wiki/gcore-player-api.md`](../wiki/gcore-player-api.md) for the full write-up:
 
 - **`Player` is a thin wrapper.** It has no caption/track API. The underlying
   Clappr player — `core`, `core.activePlayback`, `closedCaptionsTracks`,

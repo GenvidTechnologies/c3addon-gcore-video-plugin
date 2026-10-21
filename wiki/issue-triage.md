@@ -1,3 +1,12 @@
+---
+type: convention
+title: Issue Triage Conventions
+description: Issue-backlog triage conventions (flat-label variant) consumed by /gvt-dev:triage-issues — category labels, required fields, duplicate/split/dependency policy, and gh mutation recipes.
+tags: [process, triage, github]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # Issue Triage Conventions
 
 > Project conventions consumed by `/gvt-dev:triage-issues`. The companion **access

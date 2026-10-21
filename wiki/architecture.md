@@ -1,3 +1,12 @@
+---
+type: reference
+title: Architecture
+description: Editor/runtime split, the DOM message bridge, and why player-API coupling is isolated to ElementHandler.ts.
+tags: [architecture, bridge, runtime]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # Architecture
 
 This add-on wraps the GCore video player as a Construct 3 plugin. Understanding

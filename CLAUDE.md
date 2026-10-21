@@ -28,8 +28,11 @@ There is no automated test suite.
   not in the game); only `src/c3runtime/**` runs in the game.
 - All GCore player-API coupling is isolated to `src/c3runtime/dom/ElementHandler.ts`;
   the runtime side talks to it through a generic message bridge.
-- See [`docs/architecture.md`](docs/architecture.md) and
-  [`docs/gcore-player-api.md`](docs/gcore-player-api.md).
+- See [`wiki/architecture.md`](wiki/architecture.md) and
+  [`wiki/gcore-player-api.md`](wiki/gcore-player-api.md).
+- Project docs live in the `wiki/` OKF bundle maintained by
+  `/gvt-dev:maintain-wiki` (index: [`wiki/index.md`](wiki/index.md), schema:
+  [`wiki/schema.md`](wiki/schema.md)); ADRs are in `wiki/decisions/`.
 
 ## Debugging the player
 
@@ -41,7 +44,7 @@ Playwright MCP, or `npx http-server` + a browser). Reverse-engineering the
 minified bundle by reading it gives repeatedly-wrong answers; running it settles
 in minutes what static analysis gets wrong over hours. Note the `Player` is a
 thin wrapper — the real Clappr player (core, playback, tracks) is at
-`player.player`. See `docs/gcore-player-api.md` for the gotchas.
+`player.player`. See `wiki/gcore-player-api.md` for the gotchas.
 
 ## Commit Format
 

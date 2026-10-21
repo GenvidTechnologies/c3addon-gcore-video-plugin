@@ -16,7 +16,11 @@
   },
   "features": {},
   "paths": {
-    "c3project": "sample/project.c3proj"
+    "c3project": "sample/project.c3proj",
+    "docs/TOC.md": "wiki/index.md",
+    "docs/decisions/": "wiki/decisions/",
+    "docs/issue-triage.md": "wiki/issue-triage.md",
+    "docs/architecture.md": "wiki/architecture.md"
   },
   "bugTracker": {
     "kind": "github",
@@ -25,5 +29,9 @@
     "readOne": "gh issue view {id} --json number,title,body,labels,comments",
     "triagedLabel": "triaged",
     "needsInfoLabel": "question"
+  },
+  "wiki": {
+    "wikiDir": "wiki",
+    "rawDir": "raw"
   }
 }

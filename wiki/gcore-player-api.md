@@ -1,3 +1,13 @@
+---
+type: reference
+title: GCore player API reference
+description: The GCore @gcorevideo/player v2 API surface used by the plugin (loading, events, methods, quality levels, chrome/control-bar, multi-source failover, subtitles), with empirically-verified findings and pending items (low latency, DVR, side-loaded subtitles) awaiting a live/LL/DVR stream.
+tags: [gcore, player-api, subtitles, hls]
+status: stable
+stale_after: 2027-04-21
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # GCore player API reference
 
 The plugin integrates the GCore JavaScript video player. All integration lives
