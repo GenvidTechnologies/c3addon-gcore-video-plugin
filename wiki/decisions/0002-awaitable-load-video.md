@@ -1,8 +1,17 @@
+---
+type: decision-context
+title: Awaitable Load Video with resolve-at-Ready contract
+description: Awaitable Load Video — resolve-at-Ready contract, load-readiness vs. subtitle-display-settle separation, isAsync back-compat under ADR-0001, and settle-on-all-outcomes (error/timeout/superseded) design.
+tags: [adr, load-video, async]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # 0002. Awaitable Load Video with resolve-at-Ready contract
 
 - **Status:** Accepted
 - **Date:** 2026-06-26
-- **Issue:** [genvid-holdings/c3addon-gcore-video-plugin#7](https://github.com/genvid-holdings/c3addon-gcore-video-plugin/issues/7)
+- **Issue:** [GenvidTechnologies/c3addon-gcore-video-plugin#7](https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin/issues/7)
 
 ## Context
 

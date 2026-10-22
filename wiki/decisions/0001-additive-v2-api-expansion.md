@@ -1,8 +1,17 @@
+---
+type: decision-context
+title: Additive v2 API expansion with construction-time rebuild discipline
+description: Additive-only ACE expansion, construction-time rebuild discipline, and empirical verification mandate for the full v2 API conversion (issue #1).
+tags: [adr, api, aces]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # 0001. Additive v2 API expansion with construction-time rebuild discipline
 
 - **Status:** Accepted
 - **Date:** 2026-06-22
-- **Issue:** [genvid-holdings/c3addon-gcore-video-plugin#1](https://github.com/genvid-holdings/c3addon-gcore-video-plugin/issues/1)
+- **Issue:** [GenvidTechnologies/c3addon-gcore-video-plugin#1](https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin/issues/1)
 
 ## Context
 

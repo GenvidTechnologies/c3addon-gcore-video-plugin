@@ -7,7 +7,7 @@
 			"genvidtech_gcorevideoplugin": {
 				"name": "GCore Video Plugin",
 				"description": "GCore Video Plugin integration by Genvid Technologies",
-				"help-url": "https://github.com/genvid-holdings/c3addon-gcore-video-plugin",
+				"help-url": "https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin",
 				"properties": {
 					"video-url": {
 						"name": "URL",
@@ -27,7 +27,7 @@
 					},
 					"enable-dvr": {
 						"name": "Enable DVR",
-						"desc": "Enable DVR mode (seekable live window). Sets playbackType: 'dvr' on the player config. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
+						"desc": "Enable DVR mode (seekable live window). Sets playbackType: 'dvr' on the player config. Unverified against a live DVR stream — see wiki/gcore-player-api.md A6."
 					}
 				},
 				"aceCategories": {
@@ -82,7 +82,7 @@
 					"is-dvr": {
 						"list-name": "Is DVR",
 						"display-text": "Is DVR",
-						"description": "Whether the current stream is a DVR (seekable live) stream. Unverified against a live DVR stream — see docs/gcore-player-api.md A6."
+						"description": "Whether the current stream is a DVR (seekable live) stream. Unverified against a live DVR stream — see wiki/gcore-player-api.md A6."
 					},
 					"has-subtitles": {
 						"list-name": "Has subtitles",
@@ -277,7 +277,7 @@
 					"set-enable-dvr": {
 						"list-name": "Set Enable DVR",
 						"display-text": "Set DVR mode enabled to {0}",
-						"description": "Enable or disable DVR mode (seekable live window). Requires a player rebuild to take effect. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"description": "Enable or disable DVR mode (seekable live window). Requires a player rebuild to take effect. Unverified against a live DVR stream — see wiki/gcore-player-api.md A6.",
 						"params": {
 							"enable": {
 								"name": "Enable",
@@ -336,11 +336,11 @@
 						"translated-name": "GetQualityCount"
 					},
 					"get-seekable-start": {
-						"description": "The start of the DVR seekable window (seconds). 0 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"description": "The start of the DVR seekable window (seconds). 0 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see wiki/gcore-player-api.md A6.",
 						"translated-name": "GetSeekableStart"
 					},
 					"get-seekable-end": {
-						"description": "The end of the DVR seekable window (seconds). -1 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see docs/gcore-player-api.md A6.",
+						"description": "The end of the DVR seekable window (seconds). -1 when not in DVR mode or window is unknown. Unverified against a live DVR stream — see wiki/gcore-player-api.md A6.",
 						"translated-name": "GetSeekableEnd"
 					},
 					"get-subtitle-count": {

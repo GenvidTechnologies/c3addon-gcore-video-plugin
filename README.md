@@ -7,7 +7,7 @@
 
 ## To use
 
-See [`docs/usage.md`](docs/usage.md) for a task-oriented guide covering video
+See [`wiki/usage.md`](wiki/usage.md) for a task-oriented guide covering video
 loading, subtitles, quality levels, DVR, the player control bar, and v2.0.0
 breaking changes.
 

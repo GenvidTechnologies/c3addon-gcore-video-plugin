@@ -1,8 +1,17 @@
+---
+type: decision-context
+title: Two-div container structure for the Construct DOM element
+description: Two-div container structure (outer self-contained wrapper + inner player-attach container) that keeps Construct's HTML-layers wrapper indexing aligned (issue #11).
+tags: [adr, dom, html-layers]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # 0003. Two-`<div>` container structure for the Construct DOM element
 
 - **Status:** Accepted
 - **Date:** 2026-07-13
-- **Issue:** [genvid-holdings/c3addon-gcore-video-plugin#11](https://github.com/genvid-holdings/c3addon-gcore-video-plugin/issues/11)
+- **Issue:** [GenvidTechnologies/c3addon-gcore-video-plugin#11](https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin/issues/11)
 
 ## Context
 

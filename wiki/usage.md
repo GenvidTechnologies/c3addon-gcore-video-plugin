@@ -1,3 +1,13 @@
+---
+type: reference
+title: GCore Video Plugin — Usage Guide
+description: User-facing guide for Construct 3 developers — loading videos, subtitles, quality, DVR, chrome, and v2.0.0 breaking changes.
+tags: [usage, construct3, aces]
+status: stable
+stale_after: 2027-10-21
+generated: { by: process:maintain-wiki, at: 2026-10-21T00:00:00Z }
+---
+
 # GCore Video Plugin — Usage Guide
 
 **Version:** 2.0.0 | **Audience:** Construct 3 game developers using the plugin's ACEs
@@ -275,7 +285,7 @@ To seek within the DVR window use **Set playback time** (see section 7).
 > **Not yet verified against a live DVR stream.** DVR support is implemented
 > and shipped in v2.0.0.0 but has not been confirmed against a real DVR stream.
 > The seekable-window boundaries read from private player fields that may change
-> in a future player update. See `docs/gcore-player-api.md` section A6.
+> in a future player update. See [`gcore-player-api.md`](gcore-player-api.md) section A6.
 
 ---
 

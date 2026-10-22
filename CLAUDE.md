@@ -28,8 +28,11 @@ There is no automated test suite.
   not in the game); only `src/c3runtime/**` runs in the game.
 - All GCore player-API coupling is isolated to `src/c3runtime/dom/ElementHandler.ts`;
   the runtime side talks to it through a generic message bridge.
-- See [`docs/architecture.md`](docs/architecture.md) and
-  [`docs/gcore-player-api.md`](docs/gcore-player-api.md).
+- See [`wiki/architecture.md`](wiki/architecture.md) and
+  [`wiki/gcore-player-api.md`](wiki/gcore-player-api.md).
+- Project docs live in the `wiki/` OKF bundle maintained by
+  `/gvt-dev:maintain-wiki` (index: [`wiki/index.md`](wiki/index.md), schema:
+  [`wiki/schema.md`](wiki/schema.md)); ADRs are in `wiki/decisions/`.
 
 ## Debugging the player
 
@@ -41,7 +44,7 @@ Playwright MCP, or `npx http-server` + a browser). Reverse-engineering the
 minified bundle by reading it gives repeatedly-wrong answers; running it settles
 in minutes what static analysis gets wrong over hours. Note the `Player` is a
 thin wrapper — the real Clappr player (core, playback, tracks) is at
-`player.player`. See `docs/gcore-player-api.md` for the gotchas.
+`player.player`. See `wiki/gcore-player-api.md` for the gotchas.
 
 ## Commit Format
 
@@ -54,15 +57,18 @@ Examples:
 
 ## Pull Request Format
 
-Title typically mirrors the branch / ticket (e.g. `BUR-4919-no-low-latency`).
-Body should summarize the change and how it was verified (lint + build, manual
-test in Construct 3).
+Title typically mirrors the branch (e.g. `no-low-latency`). When there is an
+associated ticket, reference it (e.g. `BUR-4919`) in the body. Body should
+summarize the change and how it was verified (lint + build, manual test in
+Construct 3).
 
 ## Branching
 
 - Base branch: `main`.
-- Branch naming: `BUR-<ticket>-<kebab-description>` (e.g. `BUR-4919-no-low-latency`).
-  Use `BUR-0000-...` when there is no associated ticket.
+- Branch naming: plain `<kebab-description>` (e.g. `no-low-latency`), with no
+  `BUR-` ticket prefix, even when there is a ticket. Reference the ticket in the
+  PR body instead. Older branches and merged PR titles use the retired
+  `BUR-<ticket>-...` form.
 - Remote: GitHub (`GenvidTechnologies/c3addon-gcore-video-plugin`). A clone made
   before the org rename may still have `origin` pointing at the old
   `genvid-holdings` URL — `git push` follows the redirect, but `gh` does not (it
