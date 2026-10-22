@@ -221,7 +221,7 @@
 		"autoIncrementVersion": false,
 		"author": "Genvid Technologies, LLC",
 		"authorEmail": "support@genvidtech.com",
-		"authorWebsite": "https://github.com/genvid-holdings/c3addon-gcore-video-plugin",
+		"authorWebsite": "https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin",
 		"appId": "com.genvid.gcoresample",
 		"pixelRounding": false,
 		"zAxisScale": "normalized",
