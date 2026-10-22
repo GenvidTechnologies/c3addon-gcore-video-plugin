@@ -15,6 +15,10 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-10-22
+
+* **Creation**: sample-project-tooling.md, driven by a session insight on running the gvt-construct3 tooling against `sample/` (no raw/ capture).
+
 ## 2026-10-21
 
 * **Creation**: usage.md, migrated from `docs/usage.md` (no raw/ capture; the pre-migration text is in git history at the docs/ path).

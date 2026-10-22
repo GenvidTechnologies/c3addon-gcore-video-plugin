@@ -57,15 +57,18 @@ Examples:
 
 ## Pull Request Format
 
-Title typically mirrors the branch / ticket (e.g. `BUR-4919-no-low-latency`).
-Body should summarize the change and how it was verified (lint + build, manual
-test in Construct 3).
+Title typically mirrors the branch (e.g. `no-low-latency`). When there is an
+associated ticket, reference it (e.g. `BUR-4919`) in the body. Body should
+summarize the change and how it was verified (lint + build, manual test in
+Construct 3).
 
 ## Branching
 
 - Base branch: `main`.
-- Branch naming: `BUR-<ticket>-<kebab-description>` (e.g. `BUR-4919-no-low-latency`).
-  Use `BUR-0000-...` when there is no associated ticket.
+- Branch naming: plain `<kebab-description>` (e.g. `no-low-latency`), with no
+  `BUR-` ticket prefix, even when there is a ticket. Reference the ticket in the
+  PR body instead. Older branches and merged PR titles use the retired
+  `BUR-<ticket>-...` form.
 - Remote: GitHub (`GenvidTechnologies/c3addon-gcore-video-plugin`). A clone made
   before the org rename may still have `origin` pointing at the old
   `genvid-holdings` URL — `git push` follows the redirect, but `gh` does not (it

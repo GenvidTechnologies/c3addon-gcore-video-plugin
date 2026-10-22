@@ -29,6 +29,10 @@ See `schema.md` for the page format and maintenance rules.
 
 * [Issue Triage Conventions](issue-triage.md) - Issue-backlog triage conventions (flat-label variant) consumed by /gvt-dev:triage-issues — category labels, required fields, duplicate/split/dependency policy, and gh mutation recipes.
 
+## Tooling
+
+* [Sample project tooling (gvt-construct3)](sample-project-tooling.md) - Running the gvt-construct3 tooling (construct3-chef, c3-domain-manager) against the sample/ Construct 3 project — what works, the known benign failures (chef regenerate, validate-project timelines drift), and the committed domain-index.
+
 ## Decision Records
 
 * [Decision Records](decisions/index.md) - Architecture and compromise decisions (ADRs 0001-0003).
