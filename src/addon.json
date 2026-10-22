@@ -6,7 +6,7 @@
 	"name": "Genvid GCore Video",
 	"id": "Genvidtech_GCoreVideoPlugin",
 	"version": "2.1.1.0",
-	"author": "Genvid Technologies, LLC",
+	"author": "Genvid Technologies LLC",
 	"website": "https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin",
 	"documentation": "https://github.com/GenvidTechnologies/c3addon-gcore-video-plugin",
 	"description": "Gcore Video Player integration by Genvid Technologies.",
